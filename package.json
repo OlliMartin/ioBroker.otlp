@@ -14,7 +14,8 @@
     "OpenTelemetry",
     "history",
     "storage",
-    "time-series"
+    "time-series",
+    "ioBroker"
   ],
   "repository": {
     "type": "git",
@@ -42,7 +43,7 @@
     "@iobroker/eslint-config": "^2.2.0",
     "@iobroker/testing": "^5.2.2",
     "@tsconfig/node20": "^20.1.8",
-    "@types/iobroker": "npm:@iobroker/types@^7.1.0",
+    "@types/iobroker": "^7.1.0",
     "@types/node": "^20.19.27",
     "nyc": "^17.1.0",
     "rimraf": "^6.1.2",

@@ -1,5 +1,13 @@
 /*
  * Created with @iobroker/create-adapter v3.1.2
+ *
+ * This code is adapted from https://github.com/ioBroker/ioBroker.influxdb
+ * Mostly:
+ *  - Instrumentation logic
+ *  - UI layout stuff
+ *  - Persistence, custom state logic
+ *
+ * Hooray for MIT licenses. I should have listed what's original.
  */
 
 import type { Gauge, Meter as IMeter } from '@opentelemetry/api';
@@ -196,7 +204,7 @@ class Otlp extends utils.Adapter {
             this._trackedDataPoints[id] = item.value[this.namespace] as SavedOtlpCustomConfig;
 
             this._trackedDataPoints[id].config = JSON.stringify(item.value[this.namespace]);
-            this.log.debug(`enabled logging of ${id}, Alias=${id !== realId} points now activated`);
+            this.log.debug(`Enabled logging of ${id}, Alias=${id !== realId} points now activated`);
 
             this._trackedDataPoints[id].realId = realId;
         }
