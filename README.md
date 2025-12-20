@@ -68,6 +68,11 @@ In addition to the `aliasId` a list of attributes, i.e. key-value pairs, may be 
     Placeholder for the next version (at the beginning of the line):
     ### **WORK IN PROGRESS**
 -->
+
+### **WORK IN PROGRESS**
+
+* (OlliMartin) More cleanup
+
 ### 0.0.1-rc.4 (2025-12-20)
 
 * (OlliMartin) Update logo (transparent background)
