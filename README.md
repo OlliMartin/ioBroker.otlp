@@ -70,7 +70,7 @@ In addition to the `aliasId` a list of attributes, i.e. key-value pairs, may be 
 -->
 ### **WORK IN PROGRESS**
 
-* Include MIT Copyright Notice from [ioBroker.influxdb](https://github.com/ioBroker/ioBroker.influxdb)
+* (OlliMartin) Include MIT Copyright Notice from [ioBroker.influxdb](https://github.com/ioBroker/ioBroker.influxdb)
 
 ### 0.0.2 (2025-12-20)
 
