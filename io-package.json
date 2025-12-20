@@ -1,8 +1,21 @@
 {
   "common": {
     "name": "otlp",
-    "version": "0.0.2",
+    "version": "0.0.3",
     "news": {
+      "0.0.3": {
+        "en": "Include MIT Copyright Notice from [ioBroker.influxdb](https://github.com/ioBroker/ioBroker.influxdb)",
+        "de": "Inklusive MIT Urheberrechtshinweis von [ioBroker.influxdb](https://github.com/ioBroker/ioBroker.influxdb)",
+        "ru": "Включает MIT Уведомление об авторских правах от [ioBroker.influxdb] (https://github.com/ioBroker/ioBroker.influxdb)",
+        "pt": "Incluir o MIT (https://github.com/ioBroker/ioBroker.influxdb)",
+        "nl": "MIT opnemen Copyright Notice from [ioBroker.influxdb](https://github.com/ioBroker/ioBroker.influxdb)",
+        "fr": "Inclure le MIT Avis de copyright de [ioBroker.influxdb](https://github.com/ioBroker/ioBroker.influxdb)",
+        "it": "Includere MIT Avviso di copyright da [ioBroker.influxdb](https://github.com/ioBroker/ioBroker.influxdb)",
+        "es": "Incluido el MIT Copyright Aviso de [ioBroker.influxdb](https://github.com/ioBroker/ioBroker.influxdb)",
+        "pl": "Włączyć MIT W związku z tym, że w dniu 1 stycznia 2014 r",
+        "uk": "Включити MIT [ioBroker.influxdb] (https://github.com/ioBroker/ioBroker.influxdb)",
+        "zh-cn": "包含麻省理工学院 [ioBroker.influxdb](https://github.com/ioBroker/ioBroker.influxdb)的版权通知"
+      },
       "0.0.2": {
         "en": "Fix invalid number-range in MeterName (type: text)",
         "de": "Ungültiger Zahlenbereich in MeterName (Typ: Text)",
