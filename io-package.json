@@ -1,8 +1,21 @@
 {
   "common": {
     "name": "otlp",
-    "version": "0.0.1-rc.4",
+    "version": "0.0.1-rc.5",
     "news": {
+      "0.0.1-rc.5": {
+        "en": "More cleanup",
+        "de": "Mehr Reinigung",
+        "ru": "Больше чистки",
+        "pt": "Mais limpeza",
+        "nl": "Meer opruimen",
+        "fr": "Plus de nettoyage",
+        "it": "Più pulizia",
+        "es": "Más limpieza",
+        "pl": "Więcej sprzątania",
+        "uk": "Більше очищення",
+        "zh-cn": "更多清理"
+      },
       "0.0.1-rc.4": {
         "en": "Update logo (transparent background)",
         "de": "Update-Logo (transparent Hintergrund)",
