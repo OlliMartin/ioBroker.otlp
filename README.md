@@ -35,7 +35,7 @@ it will be _ignored_ and no data will be written.
 ## Non Goals
 
 **All data points/states must be boolean or number, since they are treated as a metric, more specifically a Gauge.**
-~~~~
+
 A string or even complex object as a metric just does not make sense; And it would not work. 
 There will never be support for anything besides numbers and boolean.
 
