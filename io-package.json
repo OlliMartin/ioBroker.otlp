@@ -1,8 +1,21 @@
 {
   "common": {
     "name": "otlp",
-    "version": "0.0.1",
+    "version": "0.0.2",
     "news": {
+      "0.0.2": {
+        "en": "Fix invalid number-range in MeterName (type: text)",
+        "de": "Ungültiger Zahlenbereich in MeterName (Typ: Text)",
+        "ru": "Исправить недействительный диапазон номеров в MeterName (тип: текст)",
+        "pt": "Corrigir intervalo de números inválidos no Nome do medidor (tipo: texto)",
+        "nl": "Fix ongeldig nummerbereik in MeterName (type: tekst)",
+        "fr": "Correction de la plage de nombres invalide dans MeterName (type: texte)",
+        "it": "Fissare il numero non valido in MeterName (tipo: testo)",
+        "es": "Fijar rango de número inválido en MeterName (tipo: texto)",
+        "pl": "Naprawiono nieprawidłowy zakres numerów w MeterName (typ: tekst)",
+        "uk": "Виправлено недійсний номер в MeterName (тип: текст)",
+        "zh-cn": "在 Meter 中修正无效的编号范围Name (类型: 文本)"
+      },
       "0.0.1": {
         "en": "Final cleanup & release first stable",
         "de": "Endreinigung & Release zuerst stabil",
