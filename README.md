@@ -68,11 +68,15 @@ In addition to the `aliasId` a list of attributes, i.e. key-value pairs, may be 
     Placeholder for the next version (at the beginning of the line):
     ### **WORK IN PROGRESS**
 -->
+### WORK IN PROGRESS
+
+* (OlliMartin) Still trying to automate release
+
 ### 0.0.1-rc.2 (2025-12-20)
 
 * (OlliMartin) preparing automated release
 
-### **0.0.1 (20.12.2025)**
+### **0.0.1-rc.1 (20.12.2025)**
 * (OlliMartin) initial release
   * Basic OTLP exporter functionality (periodic exporting)
   * gRPC or HTTP otlp transport
