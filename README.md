@@ -43,15 +43,15 @@ There will never be support for anything besides numbers and boolean.
 
 The following options can be set in the Admin UI of the adapter:
 
-| Key | Description                                                                                         |
-| - |-----------------------------------------------------------------------------------------------------|
-| Protocol | The protocol of the server (`http` or `https`). This is _not_ the OTLP!                             |
-| Open Telemetry Protocol | The protocol used to send telemetry data/metrics (`gRPC` or `http (protobuf)`)                      |
-| Host | The hostname of the target server/otelcol gateway                                                   |
-| Port | The port of the otelcol gateway. Usually `4317 (gRPC)`  or `4318 (http)`                            |
-| Meter Name | The name of the create SDK meter. Usually this is only SDK internal.                                |
-| Headers | A key-value list of headers to add to each request. This is how _authentication_ may be configured. |
-| Resource Attributes | A key-value list of [resource attributes](https://opentelemetry.io/docs/concepts/resources/#introduction) to globally populate.                                   |
+| Key                     | Description                                                                                                                     |
+|-------------------------|---------------------------------------------------------------------------------------------------------------------------------|
+| Protocol                | The protocol of the server (`http` or `https`). This is _not_ the OTLP!                                                         |
+| Open Telemetry Protocol | The protocol used to send telemetry data/metrics (`gRPC` or `http (protobuf)`)                                                  |
+| Host                    | The hostname of the target server/otelcol gateway                                                                               |
+| Port                    | The port of the otelcol gateway. Usually `4317 (gRPC)`  or `4318 (http)`                                                        |
+| Meter Name              | The name of the create SDK meter. Usually this is only SDK internal.                                                            |
+| Headers                 | A key-value list of headers to add to each request. This is how _authentication_ may be configured.                             |
+| Resource Attributes     | A key-value list of [resource attributes](https://opentelemetry.io/docs/concepts/resources/#introduction) to globally populate. |
 
 ## Custom State Configuration
 
