@@ -68,6 +68,10 @@ In addition to the `aliasId` a list of attributes, i.e. key-value pairs, may be 
     Placeholder for the next version (at the beginning of the line):
     ### **WORK IN PROGRESS**
 -->
+### **WORK IN PROGRESS**
+
+* (OlliMartin) Fix invalid number-range in MeterName (type: text)
+
 ### 0.0.1 (2025-12-20)
 * (OlliMartin) Final cleanup & release first stable
 
