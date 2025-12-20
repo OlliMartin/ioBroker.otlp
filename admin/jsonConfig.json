@@ -1,26 +1,101 @@
 {
+    "type": "tabs",
     "i18n": true,
-    "type": "panel",
     "items": {
-        "option1": {
-            "type": "checkbox",
-            "label": "option1",
-            "newLine": true,
-            "xs": 12,
-            "sm": 12,
-            "md": 6,
-            "lg": 4,
-            "xl": 4
-        },
-        "option2": {
-            "type": "text",
-            "label": "option2",
-            "newLine": true,
-            "xs": 12,
-            "sm": 12,
-            "md": 6,
-            "lg": 4,
-            "xl": 4
+        "dbTab": {
+            "type": "panel",
+            "label": "OTLP Exporter Settings",
+            "items": {
+                "protocol": {
+                    "newLine": true,
+                    "type": "select",
+                    "noTranslation": true,
+                    "options": [
+                        { "label": "HTTP", "value": "http" },
+                        { "label": "HTTPS", "value": "https" }
+                    ],
+                    "label": "Protocol",
+                    "sm": 12,
+                    "md": 2
+                },
+                "otlProtocol": {
+                    "newLine": true,
+                    "type": "select",
+                    "noTranslation": true,
+                    "options": [
+                        { "label": "gRPC", "value": "grpc" },
+                        { "label": "HTTP", "value": "http" }
+                    ],
+                    "label": "Open Telemetry Protocol",
+                    "sm": 12,
+                    "md": 2
+                },
+                "host": {
+                    "type": "text",
+                    "label": "Host",
+                    "sm": 12,
+                    "md": 8
+                },
+                "port": {
+                    "type": "number",
+                    "label": "Port",
+                    "min": 1,
+                    "max": 65565,
+                    "sm": 12,
+                    "md": 2
+                },
+                "headers": {
+                    "type": "table",
+                    "label": "Headers",
+                    "uniqueColumns": ["key"],
+                    "encryptedAttributes": ["value"],
+                    "items": [
+                        {
+                            "type": "string",
+                            "width": "50%",
+                            "attr": "key",
+                            "title": {
+                                "en": "Key"
+                            }
+                        },
+                        {
+                            "type": "string",
+                            "width": "50%",
+                            "attr": "value",
+                            "title": {
+                                "en": "Value"
+                            }
+                        }
+                    ],
+                    "sm": 12,
+                    "md": 6
+                },
+                "resourceAttributes": {
+                    "type": "table",
+                    "label": "Resource Attributes",
+                    "uniqueColumns": ["key"],
+                    "items": [
+                        {
+                            "type": "text",
+                            "width": "50%",
+                            "attr": "key",
+                            "title": {
+                                "en": "Key"
+                            }
+                        },
+                        {
+                            "type": "text",
+                            "width": "50%",
+                            "attr": "value",
+                            "title": {
+                                "en": "Value"
+                            }
+                        }
+                    ],
+                    "sm": 12,
+                    "md": 6
+                }
+            }
         }
     }
 }

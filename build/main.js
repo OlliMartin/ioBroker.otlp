@@ -23,25 +23,11 @@ var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__ge
 ));
 var import_sdk_metrics = require("@opentelemetry/sdk-metrics");
 var import_exporter_metrics_otlp_http = require("@opentelemetry/exporter-metrics-otlp-http");
+var import_exporter_metrics_otlp_grpc = require("@opentelemetry/exporter-metrics-otlp-grpc");
+var import_resources = require("@opentelemetry/resources");
 var utils = __toESM(require("@iobroker/adapter-core"));
 function isNullOrUndefined(obj) {
   return obj === void 0 || obj === null;
-}
-function parseBool(value, defaultValue) {
-  if (value !== void 0 && value !== null && value !== "") {
-    return value === true || value === "true" || value === 1 || value === "1";
-  }
-  return defaultValue || false;
-}
-function parseNumber(value, defaultValue) {
-  if (typeof value === "number") {
-    return value;
-  }
-  if (typeof value === "string") {
-    const v = parseFloat(value);
-    return isNaN(v) ? defaultValue || 0 : v;
-  }
-  return defaultValue || 0;
 }
 function parseNumberWithNull(value) {
   if (typeof value === "number") {
@@ -56,46 +42,11 @@ function parseNumberWithNull(value) {
   }
   return null;
 }
-function normalizeStateConfig(customConfig, defaultConfig) {
-  if (!customConfig.blockTime && customConfig.blockTime !== "0" && customConfig.blockTime !== 0) {
-    if (!customConfig.debounce && customConfig.debounce !== "0" && customConfig.debounce !== 0) {
-      customConfig.blockTime = defaultConfig.blockTime || 0;
-    } else {
-      customConfig.blockTime = parseInt(customConfig.debounce, 10) || 0;
-    }
-  } else {
-    customConfig.blockTime = parseInt(customConfig.blockTime, 10) || 0;
+function transformAttributes(attributesFromConfig) {
+  if (!attributesFromConfig) {
+    return {};
   }
-  customConfig.debounceTime = parseNumber(customConfig.debounceTime, 0);
-  customConfig.changesOnly = parseBool(customConfig.changesOnly);
-  customConfig.ignoreZero = parseBool(customConfig.ignoreZero);
-  if (customConfig.round !== null && customConfig.round !== void 0 && customConfig.round !== "") {
-    customConfig.round = parseInt(customConfig.round, 10);
-    if (!isFinite(customConfig.round) || customConfig.round < 0) {
-      customConfig.round = defaultConfig.round;
-    } else {
-      customConfig.round = Math.pow(10, parseInt(customConfig.round, 10));
-    }
-  } else {
-    customConfig.round = defaultConfig.round;
-  }
-  customConfig.ignoreAboveNumber = parseNumberWithNull(customConfig.ignoreAboveNumber);
-  customConfig.ignoreBelowNumber = parseNumberWithNull(customConfig.ignoreBelowNumber);
-  if (customConfig.ignoreBelowNumber === null && parseBool(customConfig.ignoreBelowZero)) {
-    customConfig.ignoreBelowNumber = 0;
-  }
-  customConfig.disableSkippedValueLogging = parseBool(
-    customConfig.disableSkippedValueLogging,
-    defaultConfig.disableSkippedValueLogging
-  );
-  customConfig.enableDebugLogs = parseBool(customConfig.enableDebugLogs, defaultConfig.enableDebugLogs);
-  customConfig.changesRelogInterval = parseNumber(
-    customConfig.changesRelogInterval,
-    defaultConfig.changesRelogInterval
-  );
-  customConfig.changesMinDelta = parseNumber(customConfig.changesMinDelta, defaultConfig.changesMinDelta);
-  customConfig.storageType || (customConfig.storageType = false);
-  return customConfig;
+  return attributesFromConfig.reduce((prev, tuple) => ({ ...prev, [tuple.key]: tuple.value }), {});
 }
 class Otlp extends utils.Adapter {
   // mapping from ioBroker ID to Alias ID
@@ -103,6 +54,7 @@ class Otlp extends utils.Adapter {
   _subscribeAll = false;
   _meterProvider = null;
   _meter = null;
+  _connected = false;
   // Mapping from AliasID to ioBroker ID
   _influxDPs = {};
   _instrumentLookup = {};
@@ -118,19 +70,50 @@ class Otlp extends utils.Adapter {
     this.on("unload", this.onUnload.bind(this));
   }
   async onReady() {
-    const collectorOptions = {
-      url: "https://otlp.acaad.dev:4318/v1/metrics"
-    };
-    const metricExporter = new import_exporter_metrics_otlp_http.OTLPMetricExporter(collectorOptions);
+    this.setConnected(false);
+    const { protocol, otlProtocol, host, port } = this.config;
+    if (isNullOrUndefined(protocol) || isNullOrUndefined(otlProtocol) || isNullOrUndefined(host) || isNullOrUndefined(port)) {
+      this.log.error(
+        "At least one required property was not set. Cannot start. Please adjust the configuration."
+      );
+      return;
+    }
+    const { headers, resourceAttributes } = this.config;
+    let otlpEndpoint = null;
+    let metricExporter = null;
+    if (otlProtocol === "http") {
+      otlpEndpoint = `${protocol}://${host}:${port}/v1/metrics`;
+      const collectorOptions = {
+        url: otlpEndpoint,
+        headers
+      };
+      metricExporter = new import_exporter_metrics_otlp_http.OTLPMetricExporter(collectorOptions);
+    }
+    if (otlProtocol === "grpc") {
+      otlpEndpoint = `${protocol}://${host}:${port}/otlp`;
+      const collectorOptions = {
+        url: otlpEndpoint,
+        headers
+      };
+      metricExporter = new import_exporter_metrics_otlp_grpc.OTLPMetricExporter(collectorOptions);
+    }
+    if (!otlpEndpoint || !metricExporter) {
+      this.log.error("Could not create metric exporter. Cannot continue. Stopping.");
+      return;
+    }
+    this.log.info(`Connecting to OTLP endpoint: ${otlpEndpoint}`);
+    const resource = !!resourceAttributes && Object.keys(resourceAttributes).length > 0 ? (0, import_resources.resourceFromAttributes)(transformAttributes(resourceAttributes)) : (0, import_resources.emptyResource)();
     this._meterProvider = new import_sdk_metrics.MeterProvider({
       readers: [
         new import_sdk_metrics.PeriodicExportingMetricReader({
           exporter: metricExporter,
           exportIntervalMillis: 1e3
         })
-      ]
+      ],
+      resource
     });
     this._meter = this._meterProvider.getMeter("ioBroker.otlp", void 0, {});
+    this.setConnected(true);
     await this.loadCustomEntitiesAsync();
     this.createMetricInstruments();
     this.subscribeToStates();
@@ -171,14 +154,10 @@ class Otlp extends utils.Adapter {
         this.log.debug(`Found Alias: ${id} --> ${this._aliasMap[id]}`);
         id = this._aliasMap[id];
       }
-      this._influxDPs[id] = normalizeStateConfig(
-        item.value[this.namespace],
-        this.config
-      );
+      this._influxDPs[id] = item.value[this.namespace];
       this._influxDPs[id].config = JSON.stringify(item.value[this.namespace]);
       this.log.debug(`enabled logging of ${id}, Alias=${id !== realId} points now activated`);
       this._influxDPs[id].realId = realId;
-      await this.writeInitialValue(realId, id);
     }
   }
   createMetricInstruments() {
@@ -192,25 +171,30 @@ class Otlp extends utils.Adapter {
     return isNullOrUndefined(aliasId) || aliasId.trim() === "" ? realId : aliasId;
   }
   createInstrumentForDataPointKey(trackedDataPointKey) {
+    if (!Object.prototype.hasOwnProperty.call(this._influxDPs, trackedDataPointKey)) {
+      this.log.warn(
+        `Expected instrument '${trackedDataPointKey}' to be present in data points, but it was not. Skipping.`
+      );
+      return;
+    }
     const trackedDataPoint = this._influxDPs[trackedDataPointKey];
     const instrumentIdentifier = this.getInstrumentIdentifier(trackedDataPoint);
     if (isNullOrUndefined(this._meter)) {
       this.log.error("No meter instance was created. This should never happen.");
       return;
     }
-    this.log.debug(`Creating gauge with name: '${instrumentIdentifier}'`);
-    this._instrumentLookup[instrumentIdentifier] = this._meter.createGauge(instrumentIdentifier);
+    this.log.debug(`Creating gauge with name: '${instrumentIdentifier}' (key=${trackedDataPointKey})`);
+    this._instrumentLookup[trackedDataPointKey] = this._meter.createGauge(instrumentIdentifier);
   }
   removeInstrumentForDataPointKey(trackedDataPointKey) {
-    const trackedDataPoint = this._influxDPs[trackedDataPointKey];
-    const instrumentIdentifier = this.getInstrumentIdentifier(trackedDataPoint);
-    if (!Object.prototype.hasOwnProperty.call(this._instrumentLookup, instrumentIdentifier)) {
+    if (!Object.prototype.hasOwnProperty.call(this._instrumentLookup, trackedDataPointKey)) {
       this.log.warn(
-        `Expected instrument '${instrumentIdentifier}' to be present, but it was not. Skipping removal.`
+        `Expected instrument '${trackedDataPointKey}' to be present, but it was not. Skipping removal.`
       );
       return;
     }
-    delete this._instrumentLookup[instrumentIdentifier];
+    this.log.debug(`Removing instrument with id: '${trackedDataPointKey}'.`);
+    delete this._instrumentLookup[trackedDataPointKey];
   }
   async onUnload(callback) {
     try {
@@ -242,6 +226,7 @@ class Otlp extends utils.Adapter {
     if (customConfig.enabled) {
       this.addTrackedAlias(id, customConfig, formerAliasId);
       this.createInstrumentForDataPointKey(id);
+      void this.writeInitialValue(id);
     } else {
       this.removeTrackedAlias(id, formerAliasId);
       this.removeInstrumentForDataPointKey(id);
@@ -254,7 +239,6 @@ class Otlp extends utils.Adapter {
       if (customConfig.aliasId !== id) {
         this._aliasMap[id] = customConfig.aliasId;
         this.log.debug(`Registered Alias: ${id} --> ${this._aliasMap[id]}`);
-        id = this._aliasMap[id];
         checkForRemove = false;
       } else {
         this.log.warn(`Ignoring Alias-ID because identical to ID for ${id}`);
@@ -276,25 +260,14 @@ class Otlp extends utils.Adapter {
         this.subscribeForeignStates(realId);
       }
     }
-    const customSettings = normalizeStateConfig(customConfig, this.config);
-    if (this._influxDPs[formerAliasId] && !this._influxDPs[formerAliasId].storageTypeAdjustedInternally && JSON.stringify(customSettings) === this._influxDPs[formerAliasId].config) {
-      this.log.debug(`Object ${id} unchanged. Ignore`);
-      return;
-    }
-    if (this._influxDPs[formerAliasId] && this._influxDPs[formerAliasId].relogTimeout) {
-      clearTimeout(this._influxDPs[formerAliasId].relogTimeout);
-      this._influxDPs[formerAliasId].relogTimeout = null;
-    }
+    const customSettings = customConfig;
     const state = this._influxDPs[formerAliasId] ? this._influxDPs[formerAliasId].state : null;
     const skipped = this._influxDPs[formerAliasId] ? this._influxDPs[formerAliasId].skipped : null;
-    const timeout = this._influxDPs[formerAliasId] ? this._influxDPs[formerAliasId].timeout : null;
     this._influxDPs[id] = customSettings;
     this._influxDPs[id].config = JSON.stringify(customSettings);
     this._influxDPs[id].realId = realId;
     this._influxDPs[id].state = state;
     this._influxDPs[id].skipped = skipped;
-    this._influxDPs[id].timeout = timeout;
-    void this.writeInitialValue(realId, id);
     this.log.info(`enabled logging of ${id}, Alias=${id !== realId}`);
   }
   removeTrackedAlias(id, formerAliasId) {
@@ -306,57 +279,69 @@ class Otlp extends utils.Adapter {
     if (!this._influxDPs[id]) {
       return;
     }
-    const relogTimeout = this._influxDPs[id].relogTimeout;
-    if (relogTimeout) {
-      clearTimeout(relogTimeout);
-    }
-    const timeout = this._influxDPs[id].timeout;
-    if (timeout) {
-      clearTimeout(timeout);
-    }
     delete this._influxDPs[id];
     this.log.info(`disabled logging of ${id}`);
     if (!this._subscribeAll) {
       this.unsubscribeForeignStates(id);
     }
   }
-  async writeInitialValue(realId, id) {
-    const state = await this.getForeignStateAsync(realId);
+  async writeInitialValue(id) {
+    const state = await this.getForeignStateAsync(id);
     if (!state || !this._influxDPs[id]) {
       return;
     }
     state.from = `system.adapter.${this.namespace}`;
     this._influxDPs[id].state = state;
-    this.log.debug("writeInitialValue called");
+    this.recordStateByIobId(id, state);
   }
   onStateChange(id, state) {
-    var _a;
     if (!state) {
       return;
     }
     if (isNullOrUndefined(this._influxDPs[id])) {
       return;
     }
-    if (!Object.prototype.hasOwnProperty.call(this._instrumentLookup, id)) {
-      this.log.warn(`Expected id=${id} to have a valid instrument, but it does not. Skipping data point.`);
+    this.recordStateByIobId(id, state);
+  }
+  recordStateByIobId(id, state) {
+    if (!Object.prototype.hasOwnProperty.call(this._influxDPs, id)) {
+      this.log.warn(`Expected id=${id} to have a valid data point configuration, but it does not. Skipping.`);
       return;
     }
+    if (!Object.prototype.hasOwnProperty.call(this._instrumentLookup, id)) {
+      this.log.warn(`Expected id=${id} to have a valid instrument, but it does not. Skipping.`);
+      return;
+    }
+    const dataPointCfg = this._influxDPs[id];
     const instrument = this._instrumentLookup[id];
     this.log.debug(`Received state change for tracked data point: ${id}. Persisting.`);
-    const otlpValue = this.transformStateValue(instrument, state.val);
+    const otlpValue = this.transformStateValue(state.val);
     this.log.debug(`Determined value to write: '${otlpValue}'.`);
     if (isNullOrUndefined(otlpValue)) {
       return;
     }
-    instrument.record(otlpValue);
-    (_a = this._meterProvider) == null ? void 0 : _a.forceFlush();
+    instrument.record(otlpValue, transformAttributes(dataPointCfg == null ? void 0 : dataPointCfg.attributes));
   }
-  transformStateValue(instrument, iobValue) {
+  transformStateValue(iobValue) {
     return parseNumberWithNull(iobValue);
   }
   onMessage(msg) {
     this.log.debug(`Incoming message ${msg.command} from ${msg.from}`);
     this.log.info(JSON.stringify(msg));
+  }
+  setConnected(isConnected) {
+    if (this._connected !== isConnected) {
+      this._connected = isConnected;
+      void this.setState(
+        "info.connection",
+        this._connected,
+        true,
+        (error) => (
+          // analyse if the state could be set (because of permissions)
+          error ? this.log.error(`Can not update this._connected state: ${error}`) : this.log.debug(`connected set to ${this._connected}`)
+        )
+      );
+    }
   }
 }
 if (require.main !== module) {

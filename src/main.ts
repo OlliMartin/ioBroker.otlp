@@ -3,33 +3,18 @@
  */
 
 import type { Gauge, Meter as IMeter } from '@opentelemetry/api';
+import type { PushMetricExporter } from '@opentelemetry/sdk-metrics';
 import { MeterProvider, PeriodicExportingMetricReader } from '@opentelemetry/sdk-metrics';
 import type { OTLPMetricExporterOptions } from '@opentelemetry/exporter-metrics-otlp-http';
 import { OTLPMetricExporter as OTLPHttpExporter } from '@opentelemetry/exporter-metrics-otlp-http';
+import { OTLPMetricExporter as OTLPGrpcExporter } from '@opentelemetry/exporter-metrics-otlp-grpc';
+import { resourceFromAttributes, emptyResource } from '@opentelemetry/resources';
 
 import * as utils from '@iobroker/adapter-core';
 import type { InfluxDBAdapterConfig, InfluxDbCustomConfig, InfluxDbCustomConfigTyped } from './types';
 
 function isNullOrUndefined(obj?: any): obj is null {
     return obj === undefined || obj === null;
-}
-
-function parseBool(value: any, defaultValue?: boolean): boolean {
-    if (value !== undefined && value !== null && value !== '') {
-        return value === true || value === 'true' || value === 1 || value === '1';
-    }
-    return defaultValue || false;
-}
-
-function parseNumber(value: any, defaultValue?: number): number {
-    if (typeof value === 'number') {
-        return value;
-    }
-    if (typeof value === 'string') {
-        const v = parseFloat(value);
-        return isNaN(v) ? defaultValue || 0 : v;
-    }
-    return defaultValue || 0;
 }
 
 function parseNumberWithNull(value: any): number | null {
@@ -46,66 +31,21 @@ function parseNumberWithNull(value: any): number | null {
     return null;
 }
 
-function normalizeStateConfig(
-    customConfig: InfluxDbCustomConfig,
-    defaultConfig: InfluxDBAdapterConfig,
-): InfluxDbCustomConfigTyped {
-    // debounceTime and debounce compatibility handling
-    if (!customConfig.blockTime && customConfig.blockTime !== '0' && customConfig.blockTime !== 0) {
-        if (!customConfig.debounce && customConfig.debounce !== '0' && customConfig.debounce !== 0) {
-            customConfig.blockTime = defaultConfig.blockTime || 0;
-        } else {
-            customConfig.blockTime = parseInt(customConfig.debounce as string, 10) || 0;
-        }
-    } else {
-        customConfig.blockTime = parseInt(customConfig.blockTime as string, 10) || 0;
+function transformAttributes(
+    attributesFromConfig: { key: string; value: string }[] | undefined,
+): Record<string, string> {
+    if (!attributesFromConfig) {
+        return {};
     }
 
-    customConfig.debounceTime = parseNumber(customConfig.debounceTime, 0);
-    customConfig.changesOnly = parseBool(customConfig.changesOnly);
-    customConfig.ignoreZero = parseBool(customConfig.ignoreZero);
-
-    // round
-    if (customConfig.round !== null && customConfig.round !== undefined && customConfig.round !== '') {
-        customConfig.round = parseInt(customConfig.round as string, 10);
-        if (!isFinite(customConfig.round) || customConfig.round < 0) {
-            customConfig.round = defaultConfig.round;
-        } else {
-            customConfig.round = Math.pow(10, parseInt(customConfig.round as unknown as string, 10));
-        }
-    } else {
-        customConfig.round = defaultConfig.round;
-    }
-
-    customConfig.ignoreAboveNumber = parseNumberWithNull(customConfig.ignoreAboveNumber);
-    customConfig.ignoreBelowNumber = parseNumberWithNull(customConfig.ignoreBelowNumber);
-    if (customConfig.ignoreBelowNumber === null && parseBool(customConfig.ignoreBelowZero)) {
-        customConfig.ignoreBelowNumber = 0;
-    }
-
-    customConfig.disableSkippedValueLogging = parseBool(
-        customConfig.disableSkippedValueLogging,
-        defaultConfig.disableSkippedValueLogging,
-    );
-    customConfig.enableDebugLogs = parseBool(customConfig.enableDebugLogs, defaultConfig.enableDebugLogs);
-    customConfig.changesRelogInterval = parseNumber(
-        customConfig.changesRelogInterval,
-        defaultConfig.changesRelogInterval as number,
-    );
-    customConfig.changesMinDelta = parseNumber(customConfig.changesMinDelta, defaultConfig.changesMinDelta);
-
-    customConfig.storageType ||= false;
-    return customConfig as InfluxDbCustomConfigTyped;
+    return attributesFromConfig.reduce((prev, tuple) => ({ ...prev, [tuple.key]: tuple.value }), {});
 }
 
 interface SavedInfluxDbCustomConfig extends InfluxDbCustomConfigTyped {
     config: string;
     realId: string;
-    storageTypeAdjustedInternally: boolean;
-    relogTimeout: NodeJS.Timeout | null;
     state: ioBroker.State | null | undefined;
     skipped: ioBroker.State | null | undefined;
-    timeout: NodeJS.Timeout | null;
     lastLogTime?: number;
 }
 
@@ -118,6 +58,8 @@ class Otlp extends utils.Adapter {
 
     private _meterProvider: MeterProvider | null = null;
     private _meter: IMeter | null = null;
+
+    private _connected: boolean = false;
 
     // Mapping from AliasID to ioBroker ID
     private readonly _influxDPs: {
@@ -139,14 +81,58 @@ class Otlp extends utils.Adapter {
     }
 
     private async onReady(): Promise<void> {
-        // TODO: Load gRPC/http-proto config
-        // -> Create http/grpc exporter respectively
+        this.setConnected(false);
 
-        const collectorOptions: OTLPMetricExporterOptions = {
-            url: 'https://otlp.acaad.dev:4318/v1/metrics',
-        };
+        const { protocol, otlProtocol, host, port } = this.config;
 
-        const metricExporter = new OTLPHttpExporter(collectorOptions);
+        if (
+            isNullOrUndefined(protocol) ||
+            isNullOrUndefined(otlProtocol) ||
+            isNullOrUndefined(host) ||
+            isNullOrUndefined(port)
+        ) {
+            this.log.error(
+                'At least one required property was not set. Cannot start. Please adjust the configuration.',
+            );
+            return;
+        }
+
+        const { headers, resourceAttributes } = this.config;
+
+        let otlpEndpoint: string | null = null;
+        let metricExporter: PushMetricExporter | null = null;
+
+        if (otlProtocol === 'http') {
+            otlpEndpoint = `${protocol}://${host}:${port}/v1/metrics`;
+
+            const collectorOptions: OTLPMetricExporterOptions = {
+                url: otlpEndpoint,
+                headers,
+            };
+            metricExporter = new OTLPHttpExporter(collectorOptions);
+        }
+
+        if (otlProtocol === 'grpc') {
+            otlpEndpoint = `${protocol}://${host}:${port}/otlp`;
+
+            const collectorOptions: OTLPMetricExporterOptions = {
+                url: otlpEndpoint,
+                headers,
+            };
+            metricExporter = new OTLPGrpcExporter(collectorOptions);
+        }
+
+        if (!otlpEndpoint || !metricExporter) {
+            this.log.error('Could not create metric exporter. Cannot continue. Stopping.');
+            return;
+        }
+
+        this.log.info(`Connecting to OTLP endpoint: ${otlpEndpoint}`);
+
+        const resource =
+            !!resourceAttributes && Object.keys(resourceAttributes).length > 0
+                ? resourceFromAttributes(transformAttributes(resourceAttributes))
+                : emptyResource();
 
         this._meterProvider = new MeterProvider({
             readers: [
@@ -155,10 +141,12 @@ class Otlp extends utils.Adapter {
                     exportIntervalMillis: 1000,
                 }),
             ],
+            resource,
         });
 
         // TODO: Allow providing meter name from adapter config.
         this._meter = this._meterProvider.getMeter('ioBroker.otlp', undefined, {});
+        this.setConnected(true);
 
         await this.loadCustomEntitiesAsync();
 
@@ -212,16 +200,12 @@ class Otlp extends utils.Adapter {
                 id = this._aliasMap[id];
             }
 
-            this._influxDPs[id] = normalizeStateConfig(
-                item.value[this.namespace],
-                this.config,
-            ) as SavedInfluxDbCustomConfig;
+            this._influxDPs[id] = item.value[this.namespace] as SavedInfluxDbCustomConfig;
 
             this._influxDPs[id].config = JSON.stringify(item.value[this.namespace]);
             this.log.debug(`enabled logging of ${id}, Alias=${id !== realId} points now activated`);
 
             this._influxDPs[id].realId = realId;
-            await this.writeInitialValue(realId, id);
         }
     }
 
@@ -235,12 +219,17 @@ class Otlp extends utils.Adapter {
 
     private getInstrumentIdentifier(dataPoint: SavedInfluxDbCustomConfig): string {
         const { aliasId, realId } = dataPoint;
-
-        // TBD: Check if this is required.
         return isNullOrUndefined(aliasId) || aliasId.trim() === '' ? realId : aliasId;
     }
 
     private createInstrumentForDataPointKey(trackedDataPointKey: string): void {
+        if (!Object.prototype.hasOwnProperty.call(this._influxDPs, trackedDataPointKey)) {
+            this.log.warn(
+                `Expected instrument '${trackedDataPointKey}' to be present in data points, but it was not. Skipping.`,
+            );
+            return;
+        }
+
         const trackedDataPoint = this._influxDPs[trackedDataPointKey];
         const instrumentIdentifier = this.getInstrumentIdentifier(trackedDataPoint);
 
@@ -249,22 +238,20 @@ class Otlp extends utils.Adapter {
             return;
         }
 
-        this.log.debug(`Creating gauge with name: '${instrumentIdentifier}'`);
-        this._instrumentLookup[instrumentIdentifier] = this._meter.createGauge(instrumentIdentifier);
+        this.log.debug(`Creating gauge with name: '${instrumentIdentifier}' (key=${trackedDataPointKey})`);
+        this._instrumentLookup[trackedDataPointKey] = this._meter.createGauge(instrumentIdentifier);
     }
 
     private removeInstrumentForDataPointKey(trackedDataPointKey: string): void {
-        const trackedDataPoint = this._influxDPs[trackedDataPointKey];
-        const instrumentIdentifier = this.getInstrumentIdentifier(trackedDataPoint);
-
-        if (!Object.prototype.hasOwnProperty.call(this._instrumentLookup, instrumentIdentifier)) {
+        if (!Object.prototype.hasOwnProperty.call(this._instrumentLookup, trackedDataPointKey)) {
             this.log.warn(
-                `Expected instrument '${instrumentIdentifier}' to be present, but it was not. Skipping removal.`,
+                `Expected instrument '${trackedDataPointKey}' to be present, but it was not. Skipping removal.`,
             );
             return;
         }
 
-        delete this._instrumentLookup[instrumentIdentifier];
+        this.log.debug(`Removing instrument with id: '${trackedDataPointKey}'.`);
+        delete this._instrumentLookup[trackedDataPointKey];
     }
 
     private async onUnload(callback: () => void): Promise<void> {
@@ -307,6 +294,7 @@ class Otlp extends utils.Adapter {
         if (customConfig.enabled) {
             this.addTrackedAlias(id, customConfig, formerAliasId);
             this.createInstrumentForDataPointKey(id);
+            void this.writeInitialValue(id);
         } else {
             this.removeTrackedAlias(id, formerAliasId);
             this.removeInstrumentForDataPointKey(id);
@@ -321,7 +309,6 @@ class Otlp extends utils.Adapter {
             if (customConfig.aliasId !== id) {
                 this._aliasMap[id] = customConfig.aliasId;
                 this.log.debug(`Registered Alias: ${id} --> ${this._aliasMap[id]}`);
-                id = this._aliasMap[id];
                 checkForRemove = false;
             } else {
                 this.log.warn(`Ignoring Alias-ID because identical to ID for ${id}`);
@@ -348,35 +335,16 @@ class Otlp extends utils.Adapter {
             }
         }
 
-        const customSettings: InfluxDbCustomConfig = normalizeStateConfig(customConfig, this.config);
-
-        if (
-            this._influxDPs[formerAliasId] &&
-            !this._influxDPs[formerAliasId].storageTypeAdjustedInternally &&
-            JSON.stringify(customSettings) === this._influxDPs[formerAliasId].config
-        ) {
-            this.log.debug(`Object ${id} unchanged. Ignore`);
-            return;
-        }
-
-        // relogTimeout
-        if (this._influxDPs[formerAliasId] && this._influxDPs[formerAliasId].relogTimeout) {
-            clearTimeout(this._influxDPs[formerAliasId].relogTimeout);
-            this._influxDPs[formerAliasId].relogTimeout = null;
-        }
+        const customSettings: InfluxDbCustomConfig = customConfig;
 
         const state = this._influxDPs[formerAliasId] ? this._influxDPs[formerAliasId].state : null;
         const skipped = this._influxDPs[formerAliasId] ? this._influxDPs[formerAliasId].skipped : null;
-        const timeout = this._influxDPs[formerAliasId] ? this._influxDPs[formerAliasId].timeout : null;
 
         this._influxDPs[id] = customSettings as SavedInfluxDbCustomConfig;
         this._influxDPs[id].config = JSON.stringify(customSettings);
         this._influxDPs[id].realId = realId;
         this._influxDPs[id].state = state;
         this._influxDPs[id].skipped = skipped;
-        this._influxDPs[id].timeout = timeout;
-
-        void this.writeInitialValue(realId, id);
 
         this.log.info(`enabled logging of ${id}, Alias=${id !== realId}`);
     }
@@ -393,15 +361,6 @@ class Otlp extends utils.Adapter {
             return;
         }
 
-        const relogTimeout = this._influxDPs[id].relogTimeout;
-        if (relogTimeout) {
-            clearTimeout(relogTimeout);
-        }
-        const timeout = this._influxDPs[id].timeout;
-        if (timeout) {
-            clearTimeout(timeout);
-        }
-
         delete this._influxDPs[id];
         this.log.info(`disabled logging of ${id}`);
 
@@ -410,8 +369,8 @@ class Otlp extends utils.Adapter {
         }
     }
 
-    async writeInitialValue(realId: string, id: string): Promise<void> {
-        const state = await this.getForeignStateAsync(realId);
+    async writeInitialValue(id: string): Promise<void> {
+        const state = await this.getForeignStateAsync(id);
 
         if (!state || !this._influxDPs[id]) {
             return;
@@ -420,7 +379,7 @@ class Otlp extends utils.Adapter {
         state.from = `system.adapter.${this.namespace}`;
         this._influxDPs[id].state = state;
 
-        this.log.debug('writeInitialValue called');
+        this.recordStateByIobId(id, state);
     }
 
     private onStateChange(id: string, state: ioBroker.State | null | undefined): void {
@@ -432,33 +391,53 @@ class Otlp extends utils.Adapter {
             return;
         }
 
-        if (!Object.prototype.hasOwnProperty.call(this._instrumentLookup, id)) {
-            this.log.warn(`Expected id=${id} to have a valid instrument, but it does not. Skipping data point.`);
+        this.recordStateByIobId(id, state);
+    }
+
+    private recordStateByIobId(id: string, state: ioBroker.State): void {
+        if (!Object.prototype.hasOwnProperty.call(this._influxDPs, id)) {
+            this.log.warn(`Expected id=${id} to have a valid data point configuration, but it does not. Skipping.`);
             return;
         }
 
+        if (!Object.prototype.hasOwnProperty.call(this._instrumentLookup, id)) {
+            this.log.warn(`Expected id=${id} to have a valid instrument, but it does not. Skipping.`);
+            return;
+        }
+
+        const dataPointCfg = this._influxDPs[id];
         const instrument = this._instrumentLookup[id];
         this.log.debug(`Received state change for tracked data point: ${id}. Persisting.`);
 
-        const otlpValue = this.transformStateValue(instrument, state.val);
+        const otlpValue = this.transformStateValue(state.val);
         this.log.debug(`Determined value to write: '${otlpValue}'.`);
 
         if (isNullOrUndefined(otlpValue)) {
             return;
         }
 
-        instrument.record(otlpValue);
-
-        this._meterProvider?.forceFlush();
+        instrument.record(otlpValue, transformAttributes(dataPointCfg?.attributes));
     }
 
-    private transformStateValue(instrument: Gauge, iobValue: ioBroker.StateValue): number | null {
+    private transformStateValue(iobValue: ioBroker.StateValue): number | null {
         return parseNumberWithNull(iobValue);
     }
 
     private onMessage(msg: ioBroker.Message): void {
         this.log.debug(`Incoming message ${msg.command} from ${msg.from}`);
         this.log.info(JSON.stringify(msg));
+    }
+
+    private setConnected(isConnected: boolean): void {
+        if (this._connected !== isConnected) {
+            this._connected = isConnected;
+            void this.setState('info.connection', this._connected, true, error =>
+                // analyse if the state could be set (because of permissions)
+                error
+                    ? this.log.error(`Can not update this._connected state: ${error}`)
+                    : this.log.debug(`connected set to ${this._connected}`),
+            );
+        }
     }
 }
 if (require.main !== module) {
