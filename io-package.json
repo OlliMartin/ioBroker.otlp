@@ -55,14 +55,20 @@
         "extIcon": "https://raw.githubusercontent.com/OlliMartin/ioBroker.otlp/main/admin/otlp.png",
         "readme": "https://github.com/OlliMartin/ioBroker.otlp/blob/main/README.md",
         "loglevel": "info",
-        "tier": 3,
+        "messagebox": true,
+        "tier": 1,
         "mode": "daemon",
         "type": "storage",
+        "getHistory": false,
         "compact": true,
+        "eraseOnUpload": true,
         "connectionType": "local",
         "dataSource": "push",
+        "preserveSettings": "custom",
+        "supportCustoms": true,
         "adminUI": {
-            "config": "json"
+            "config": "json",
+            "custom": "json"
         },
         "dependencies": [
             {
@@ -76,8 +82,53 @@
         ]
     },
     "native": {
-        "option1": true,
-        "option2": "42"
+        "debounce": 1000,
+        "retention": 31536000,
+        "dbname": "iobroker",
+        "host": "localhost",
+        "protocol": "http",
+        "path": "",
+        "port": 8086,
+        "user": "",
+        "password": "",
+        "token": "",
+        "organization": "",
+        "round": 4,
+        "seriesBufferMax": 0,
+        "seriesBufferFlushInterval": 600,
+        "changesRelogInterval": 0,
+        "changesMinDelta": 0,
+        "reconnectInterval": 10000,
+        "pingInterval": 15000,
+        "requestTimeout": 30000,
+        "validateSSL": true,
+        "dbversion": "1.x",
+        "usetags": false,
+        "pingserver": true,
+        "blockTime": 0,
+        "debounceTime": 0,
+        "disableSkippedValueLogging": false,
+        "enableLogging": false,
+        "customRetentionDuration": 365,
+        "relogLastValueOnStart": true,
+        "dockerInflux": {
+            "enabled": false,
+            "bind": "127.0.0.1",
+            "stopIfInstanceStopped": true,
+            "port": "8086",
+            "autoImageUpdate": true
+        },
+        "dockerGrafana": {
+            "enabled": false,
+            "bind": "0.0.0.0",
+            "stopIfInstanceStopped": true,
+            "port": "3000",
+            "autoImageUpdate": true,
+            "adminSecurityPassword": "iobroker",
+            "serverRootUrl": "",
+            "plugins": [],
+            "usersAllowSignUp": true
+        }
     },
     "objects": [],
     "instanceObjects": []

@@ -5,11 +5,34 @@
 // The adapter-core module gives you access to the core ioBroker functions
 // you need to create an adapter
 import * as utils from '@iobroker/adapter-core';
+import type { InfluxDBAdapterConfig, InfluxDbCustomConfig, InfluxDbCustomConfigTyped } from './types';
 
 // Load your modules here, e.g.:
 // import * as fs from 'fs';
 
+interface SavedInfluxDbCustomConfig extends InfluxDbCustomConfigTyped {
+    config: string;
+    realId: string;
+    storageTypeAdjustedInternally: boolean;
+    relogTimeout: NodeJS.Timeout | null;
+    state: ioBroker.State | null | undefined;
+    skipped: ioBroker.State | null | undefined;
+    timeout: NodeJS.Timeout | null;
+    lastLogTime?: number;
+}
+
 class Otlp extends utils.Adapter {
+    declare config: InfluxDBAdapterConfig;
+
+    // mapping from ioBroker ID to Alias ID
+    private readonly _aliasMap: { [ioBrokerId: string]: string } = {};
+    private _subscribeAll = false;
+
+    // Mapping from AliasID to ioBroker ID
+    private readonly _influxDPs: {
+        [ioBrokerId: string]: SavedInfluxDbCustomConfig;
+    } = {};
+
     public constructor(options: Partial<utils.AdapterOptions> = {}) {
         super({
             ...options,
@@ -17,106 +40,278 @@ class Otlp extends utils.Adapter {
         });
         this.on('ready', this.onReady.bind(this));
         this.on('stateChange', this.onStateChange.bind(this));
-        // this.on('objectChange', this.onObjectChange.bind(this));
-        // this.on('message', this.onMessage.bind(this));
+        this.on('objectChange', this.onObjectChange.bind(this));
+        this.on('message', this.onMessage.bind(this));
         this.on('unload', this.onUnload.bind(this));
     }
 
-    /**
-     * Is called when databases are connected and adapter received configuration.
-     */
     private async onReady(): Promise<void> {
-        // Initialize your adapter here
+        this.log.info('Adapter is ready.');
 
-        // The adapters config (in the instance object everything under the attribute "native") is accessible via
-        // this.config:
-        this.log.debug('config option1: ${this.config.option1}');
-        this.log.debug('config option2: ${this.config.option2}');
+        const doc = await this.getObjectViewAsync('system', 'custom', {});
 
-        /*
-		For every state in the system there has to be also an object of type state
-		Here a simple template for a boolean variable named "testVariable"
-		Because every adapter instance uses its own unique namespace variable names can't collide with other adapters variables
+        if (doc?.rows) {
+            const l = doc.rows.length;
+            for (let i = 0; i < l; i++) {
+                if (doc.rows[i].value) {
+                    const item: {
+                        id: string;
+                        value: {
+                            [key: `${string}.${number}`]: InfluxDbCustomConfigTyped;
+                        };
+                    } = doc.rows[i];
+                    let id = item.id;
+                    const realId = id;
+                    if (!item.value[this.namespace]?.enabled) {
+                        this.log.debug("Skipping data point. It's not enabled.");
+                        continue;
+                    }
+                    if (item.value[this.namespace]?.aliasId) {
+                        this._aliasMap[id] = item.value[this.namespace].aliasId;
+                        this.log.debug(`Found Alias: ${id} --> ${this._aliasMap[id]}`);
+                        id = this._aliasMap[id];
+                    }
+                    this._influxDPs[id] = this.normalizeStateConfig(
+                        item.value[this.namespace],
+                        this.config,
+                    ) as SavedInfluxDbCustomConfig;
+                    this._influxDPs[id].config = JSON.stringify(item.value[this.namespace]);
+                    this.log.debug(`enabled logging of ${id}, Alias=${id !== realId} points now activated`);
 
-		IMPORTANT: State roles should be chosen carefully based on the state's purpose.
-		           Please refer to the state roles documentation for guidance:
-		           https://www.iobroker.net/#en/documentation/dev/stateroles.md
-		*/
-        await this.setObjectNotExistsAsync('testVariable', {
-            type: 'state',
-            common: {
-                name: 'testVariable',
-                type: 'boolean',
-                role: 'indicator',
-                read: true,
-                write: true,
-            },
-            native: {},
-        });
+                    this._influxDPs[id].realId = realId;
+                    await this.writeInitialValue(realId, id);
+                }
+            }
+        }
 
-        // In order to get state updates, you need to subscribe to them. The following line adds a subscription for our variable we have created above.
-        this.subscribeStates('testVariable');
-        // You can also add a subscription for multiple states. The following line watches all states starting with "lights."
-        // this.subscribeStates('lights.*');
-        // Or, if you really must, you can also watch all states. Don't do this if you don't need to. Otherwise this will cause a lot of unnecessary load on the system:
-        // this.subscribeStates('*');
+        // If we have less than 20 datapoints, subscribe individually, else subscribe to all
+        if (Object.keys(this._influxDPs).length < 20) {
+            this.log.info(`subscribing to ${Object.keys(this._influxDPs).length} datapoints`);
+            for (const _id in this._influxDPs) {
+                if (Object.prototype.hasOwnProperty.call(this._influxDPs, _id)) {
+                    this.subscribeForeignStates(this._influxDPs[_id].realId);
+                }
+            }
+        } else {
+            this.log.debug(
+                `subscribing to all datapoints as we have ${Object.keys(this._influxDPs).length} datapoints to log`,
+            );
+            this._subscribeAll = true;
+            this.subscribeForeignStates('*');
+        }
 
-        /*
-			setState examples
-			you will notice that each setState will cause the stateChange event to fire (because of above subscribeStates cmd)
-		*/
-        // the variable testVariable is set to true as command (ack=false)
-        await this.setState('testVariable', true);
-
-        // same thing, but the value is flagged "ack"
-        // ack should be always set to true if the value is received from or acknowledged from the target system
-        await this.setState('testVariable', { val: true, ack: true });
-
-        // same thing, but the state is deleted after 30s (getState will return null afterwards)
-        await this.setState('testVariable', { val: true, ack: true, expire: 30 });
-
-        // examples for the checkPassword/checkGroup functions
-        const pwdResult = await this.checkPasswordAsync('admin', 'iobroker');
-        this.log.info(`check user admin pw iobroker: ${JSON.stringify(pwdResult)}`);
-
-        const groupResult = await this.checkGroupAsync('admin', 'admin');
-        this.log.info(`check group user admin group admin: ${JSON.stringify(groupResult)}`);
+        this.subscribeForeignObjects('*');
     }
 
-    /**
-     * Is called when adapter shuts down - callback has to be called under any circumstances!
-     *
-     * @param callback - Callback function
-     */
     private onUnload(callback: () => void): void {
         try {
-            // Here you must clear all timeouts or intervals that may still be active
-            // clearTimeout(timeout1);
-            // clearTimeout(timeout2);
-            // ...
-            // clearInterval(interval1);
-
-            callback();
-        } catch (error) {
-            this.log.error(`Error during unloading: ${(error as Error).message}`);
+            this.log.info('Shutting down adapter.');
+        } finally {
             callback();
         }
     }
 
-    // If you need to react to object changes, uncomment the following block and the corresponding line in the constructor.
-    // You also need to subscribe to the objects with `this.subscribeObjects`, similar to `this.subscribeStates`.
-    // /**
-    //  * Is called if a subscribed object changes
-    //  */
-    // private onObjectChange(id: string, obj: ioBroker.Object | null | undefined): void {
-    //     if (obj) {
-    //         // The object was changed
-    //         this.log.info(`object ${id} changed: ${JSON.stringify(obj)}`);
-    //     } else {
-    //         // The object was deleted
-    //         this.log.info(`object ${id} deleted`);
-    //     }
-    // }
+    private onObjectChange(id: string, obj: ioBroker.Object | null | undefined): void {
+        this.log.info(`OMA Received object change for id ${id}`);
+
+        const formerAliasId = this._aliasMap[id] ? this._aliasMap[id] : id;
+        if (
+            obj?.common?.custom?.[this.namespace] &&
+            typeof obj.common.custom[this.namespace] === 'object' &&
+            obj.common.custom[this.namespace].enabled
+        ) {
+            const realId = id;
+            let checkForRemove = true;
+            if (obj.common.custom?.[this.namespace]?.aliasId) {
+                if (obj.common.custom[this.namespace].aliasId !== id) {
+                    this._aliasMap[id] = obj.common.custom[this.namespace].aliasId;
+                    this.log.debug(`Registered Alias: ${id} --> ${this._aliasMap[id]}`);
+                    id = this._aliasMap[id];
+                    checkForRemove = false;
+                } else {
+                    this.log.warn(`Ignoring Alias-ID because identical to ID for ${id}`);
+                    obj.common.custom[this.namespace].aliasId = '';
+                }
+            }
+            if (checkForRemove && this._aliasMap[id]) {
+                this.log.debug(`Removed Alias: ${id} !-> ${this._aliasMap[id]}`);
+                delete this._aliasMap[id];
+            }
+
+            // if not yet subscribed
+            if (!this._influxDPs[formerAliasId] && !this._subscribeAll) {
+                if (Object.keys(this._influxDPs).length >= 19) {
+                    // unsubscribe all subscriptions and subscribe to all
+                    for (const _id in this._influxDPs) {
+                        this.unsubscribeForeignStates(this._influxDPs[_id].realId);
+                    }
+                    this._subscribeAll = true;
+                    this.subscribeForeignStates('*');
+                } else {
+                    this.subscribeForeignStates(realId);
+                }
+            }
+
+            const customSettings: InfluxDbCustomConfig = this.normalizeStateConfig(
+                obj.common.custom[this.namespace],
+                this.config,
+            );
+
+            if (
+                this._influxDPs[formerAliasId] &&
+                !this._influxDPs[formerAliasId].storageTypeAdjustedInternally &&
+                JSON.stringify(customSettings) === this._influxDPs[formerAliasId].config
+            ) {
+                if (customSettings.enableDebugLogs) {
+                    this.log.debug(`Object ${id} unchanged. Ignore`);
+                }
+                return;
+            }
+
+            // relogTimeout
+            if (this._influxDPs[formerAliasId] && this._influxDPs[formerAliasId].relogTimeout) {
+                clearTimeout(this._influxDPs[formerAliasId].relogTimeout);
+                this._influxDPs[formerAliasId].relogTimeout = null;
+            }
+
+            const state = this._influxDPs[formerAliasId] ? this._influxDPs[formerAliasId].state : null;
+            const skipped = this._influxDPs[formerAliasId] ? this._influxDPs[formerAliasId].skipped : null;
+            const timeout = this._influxDPs[formerAliasId] ? this._influxDPs[formerAliasId].timeout : null;
+
+            this._influxDPs[id] = customSettings as SavedInfluxDbCustomConfig;
+            this._influxDPs[id].config = JSON.stringify(customSettings);
+            this._influxDPs[id].realId = realId;
+            this._influxDPs[id].state = state;
+            this._influxDPs[id].skipped = skipped;
+            this._influxDPs[id].timeout = timeout;
+
+            void this.writeInitialValue(realId, id);
+
+            this.log.info(`enabled logging of ${id}, Alias=${id !== realId}`);
+        } else {
+            if (this._aliasMap[id]) {
+                this.log.debug(`Removed Alias: ${id} !-> ${this._aliasMap[id]}`);
+                delete this._aliasMap[id];
+            }
+
+            id = formerAliasId;
+
+            if (this._influxDPs[id]) {
+                const relogTimeout = this._influxDPs[id].relogTimeout;
+                if (relogTimeout) {
+                    clearTimeout(relogTimeout);
+                }
+                const timeout = this._influxDPs[id].timeout;
+                if (timeout) {
+                    clearTimeout(timeout);
+                }
+
+                delete this._influxDPs[id];
+                this.log.info(`disabled logging of ${id}`);
+                if (!this._subscribeAll) {
+                    this.unsubscribeForeignStates(id);
+                }
+            }
+        }
+    }
+
+    async writeInitialValue(realId: string, id: string): Promise<void> {
+        const state = await this.getForeignStateAsync(realId);
+        if (state && this._influxDPs[id]) {
+            state.from = `system.adapter.${this.namespace}`;
+            this._influxDPs[id].state = state;
+
+            this.log.debug('writeInitialValue called');
+
+            // if (this.config.relogLastValueOnStart) {
+            //     this._tasksStart.push(id);
+            //     if (this._tasksStart.length === 1 && this._connected) {
+            //         await this.processStartValues();
+            //     }
+            // }
+        }
+    }
+
+    normalizeStateConfig(
+        customConfig: InfluxDbCustomConfig,
+        defaultConfig: InfluxDBAdapterConfig,
+    ): InfluxDbCustomConfigTyped {
+        // debounceTime and debounce compatibility handling
+        if (!customConfig.blockTime && customConfig.blockTime !== '0' && customConfig.blockTime !== 0) {
+            if (!customConfig.debounce && customConfig.debounce !== '0' && customConfig.debounce !== 0) {
+                customConfig.blockTime = defaultConfig.blockTime || 0;
+            } else {
+                customConfig.blockTime = parseInt(customConfig.debounce as string, 10) || 0;
+            }
+        } else {
+            customConfig.blockTime = parseInt(customConfig.blockTime as string, 10) || 0;
+        }
+
+        customConfig.debounceTime = this.parseNumber(customConfig.debounceTime, 0);
+        customConfig.changesOnly = this.parseBool(customConfig.changesOnly);
+        customConfig.ignoreZero = this.parseBool(customConfig.ignoreZero);
+
+        // round
+        if (customConfig.round !== null && customConfig.round !== undefined && customConfig.round !== '') {
+            customConfig.round = parseInt(customConfig.round as string, 10);
+            if (!isFinite(customConfig.round) || customConfig.round < 0) {
+                customConfig.round = defaultConfig.round;
+            } else {
+                customConfig.round = Math.pow(10, parseInt(customConfig.round as unknown as string, 10));
+            }
+        } else {
+            customConfig.round = defaultConfig.round;
+        }
+
+        customConfig.ignoreAboveNumber = this.parseNumberWithNull(customConfig.ignoreAboveNumber);
+        customConfig.ignoreBelowNumber = this.parseNumberWithNull(customConfig.ignoreBelowNumber);
+        if (customConfig.ignoreBelowNumber === null && this.parseBool(customConfig.ignoreBelowZero)) {
+            customConfig.ignoreBelowNumber = 0;
+        }
+
+        customConfig.disableSkippedValueLogging = this.parseBool(
+            customConfig.disableSkippedValueLogging,
+            defaultConfig.disableSkippedValueLogging,
+        );
+        customConfig.enableDebugLogs = this.parseBool(customConfig.enableDebugLogs, defaultConfig.enableDebugLogs);
+        customConfig.changesRelogInterval = this.parseNumber(
+            customConfig.changesRelogInterval,
+            defaultConfig.changesRelogInterval as number,
+        );
+        customConfig.changesMinDelta = this.parseNumber(customConfig.changesMinDelta, defaultConfig.changesMinDelta);
+
+        customConfig.storageType ||= false;
+        return customConfig as InfluxDbCustomConfigTyped;
+    }
+
+    parseBool(value: any, defaultValue?: boolean): boolean {
+        if (value !== undefined && value !== null && value !== '') {
+            return value === true || value === 'true' || value === 1 || value === '1';
+        }
+        return defaultValue || false;
+    }
+
+    parseNumber(value: any, defaultValue?: number): number {
+        if (typeof value === 'number') {
+            return value;
+        }
+        if (typeof value === 'string') {
+            const v = parseFloat(value);
+            return isNaN(v) ? defaultValue || 0 : v;
+        }
+        return defaultValue || 0;
+    }
+
+    parseNumberWithNull(value: any): number | null {
+        if (typeof value === 'number') {
+            return value;
+        }
+        if (typeof value === 'string') {
+            const v = parseFloat(value);
+            return isNaN(v) ? null : v;
+        }
+        return null;
+    }
 
     /**
      * Is called if a subscribed state changes
@@ -141,22 +336,12 @@ class Otlp extends utils.Adapter {
             this.log.info(`state ${id} deleted`);
         }
     }
-    // If you need to accept messages in your adapter, uncomment the following block and the corresponding line in the constructor.
-    // /**
-    //  * Some message was sent to this instance over message box. Used by email, pushover, text2speech, ...
-    //  * Using this method requires "common.messagebox" property to be set to true in io-package.json
-    //  */
-    //
-    // private onMessage(obj: ioBroker.Message): void {
-    //     if (typeof obj === 'object' && obj.message) {
-    //         if (obj.command === 'send') {
-    //             // e.g. send email or pushover or whatever
-    //             this.log.info('send command');
-    //             // Send response in callback if required
-    //             if (obj.callback) this.sendTo(obj.from, obj.command, 'Message received', obj.callback);
-    //         }
-    //     }
-    // }
+
+    private onMessage(msg: ioBroker.Message): void {
+        this.log.debug(`Incoming message ${msg.command} from ${msg.from}`);
+        this.log.info('OMA Received message.');
+        this.log.warn(JSON.stringify(msg));
+    }
 }
 if (require.main !== module) {
     // Export the constructor in compact mode
