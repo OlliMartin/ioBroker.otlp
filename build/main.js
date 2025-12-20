@@ -149,7 +149,7 @@ class Otlp extends utils.Adapter {
       const realId = id;
       this._trackedDataPoints[id] = item.value[this.namespace];
       this._trackedDataPoints[id].config = JSON.stringify(item.value[this.namespace]);
-      this.log.debug(`enabled logging of ${id}, Alias=${id !== realId} points now activated`);
+      this.log.debug(`Enabled logging of ${id}, Alias=${id !== realId} points now activated`);
       this._trackedDataPoints[id].realId = realId;
     }
   }
