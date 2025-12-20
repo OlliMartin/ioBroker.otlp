@@ -1,8 +1,21 @@
 {
   "common": {
     "name": "otlp",
-    "version": "0.0.1-rc.5",
+    "version": "0.0.1",
     "news": {
+      "0.0.1": {
+        "en": "Final cleanup & release first stable",
+        "de": "Endreinigung & Release zuerst stabil",
+        "ru": "Окончательная очистка и выпуск первой стабильной",
+        "pt": "Limpeza final e lançamento primeiro estável",
+        "nl": "Laatste opruiming en release eerste stabiel",
+        "fr": "Nettoyage final & libération première stable",
+        "it": "Pulizia finale e rilascio primo stabile",
+        "es": "Limpieza final & lanzamiento primer estable",
+        "pl": "Końcowe czyszczenie i wydanie pierwszej stabilnej",
+        "uk": "Остаточний чистий і реліз перший стабільний",
+        "zh-cn": "最后清理并首先发布稳定"
+      },
       "0.0.1-rc.5": {
         "en": "More cleanup",
         "de": "Mehr Reinigung",
