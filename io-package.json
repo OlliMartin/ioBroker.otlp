@@ -1,8 +1,21 @@
 {
   "common": {
     "name": "otlp",
-    "version": "0.0.1-rc.3",
+    "version": "0.0.1-rc.4",
     "news": {
+      "0.0.1-rc.4": {
+        "en": "Update logo (transparent background)",
+        "de": "Update-Logo (transparent Hintergrund)",
+        "ru": "Логотип обновления (прозрачный фон)",
+        "pt": "Actualizar o logótipo (fundo transparente)",
+        "nl": "Logo bijwerken (transparante achtergrond)",
+        "fr": "Mettre à jour le logo (arrière-plan transparent)",
+        "it": "Logo di aggiornamento (sfondo trasparente)",
+        "es": "Logo de actualización (de fondo transparente)",
+        "pl": "Aktualizuj logo (przezroczyste tło)",
+        "uk": "Оновлення логотипу (прозорий фон)",
+        "zh-cn": "更新标志( 透明背景)"
+      },
       "0.0.1-rc.3": {
         "en": "Still trying to automate release",
         "de": "Immer noch versuchen, die Freigabe zu automatisieren",
