@@ -1,0 +1,84 @@
+{
+    "common": {
+        "name": "otlp",
+        "version": "0.0.1",
+        "news": {
+            "0.0.1": {
+                "en": "initial release",
+                "de": "Erstveröffentlichung",
+                "ru": "Начальная версия",
+                "pt": "lançamento inicial",
+                "nl": "Eerste uitgave",
+                "fr": "Première version",
+                "it": "Versione iniziale",
+                "es": "Versión inicial",
+                "pl": "Pierwsze wydanie",
+                "uk": "Початкова версія",
+                "zh-cn": "首次出版"
+            }
+        },
+        "titleLang": {
+            "en": "OpenTelemetry History Exporter",
+            "de": "OpenTelemetry History Exporter",
+            "ru": "Экспортер истории OpenTelemetry",
+            "pt": "Exportador de histórico OpenTelemetry",
+            "nl": "OpenTelemetry-geschiedenisexporteur",
+            "fr": "Exportateur d’historique OpenTelemetry",
+            "it": "Esportatore di cronologia OpenTelemetry",
+            "es": "Exportador de historial de OpenTelemetry",
+            "pl": "Eksporter historii OpenTelemetry",
+            "uk": "Програма експорту історії OpenTelemetry",
+            "zh-cn": "OpenTelemetry 历史记录导出器"
+        },
+        "desc": {
+            "en": "The adapter allows pushing historical data into a OTLP-compatible gateway",
+            "de": "Der Adapter ermöglicht die Übertragung historischer Daten an ein OTLP-kompatibles Gateway",
+            "ru": "Адаптер позволяет передавать исторические данные в OTLP-совместимый шлюз.",
+            "pt": "O adaptador permite enviar dados históricos para um gateway compatível com OTLP",
+            "nl": "Met de adapter kunnen historische gegevens naar een OTLP-compatibele gateway worden gepusht",
+            "fr": "L'adaptateur permet de transmettre des données historiques vers une passerelle compatible OTLP",
+            "it": "L'adattatore consente di inviare dati cronologici a un gateway compatibile con OTLP",
+            "es": "El adaptador permite enviar datos históricos a una puerta de enlace compatible con OTLP",
+            "pl": "Adapter umożliwia przesyłanie danych historycznych do bramki kompatybilnej z OTLP",
+            "uk": "Адаптер дозволяє надсилати історичні дані в OTLP-сумісний шлюз",
+            "zh-cn": "该适配器允许将历史数据推送到兼容 OTLP 的网关"
+        },
+        "authors": ["OlliMartin <oss@ollimart.in>"],
+        "keywords": ["OTLP", "OpenTelemetry", "history", "storage", "time-series"],
+        "licenseInformation": {
+            "type": "free",
+            "license": "MIT"
+        },
+        "platform": "Javascript/Node.js",
+        "icon": "otlp.png",
+        "enabled": true,
+        "extIcon": "https://raw.githubusercontent.com/OlliMartin/ioBroker.otlp/main/admin/otlp.png",
+        "readme": "https://github.com/OlliMartin/ioBroker.otlp/blob/main/README.md",
+        "loglevel": "info",
+        "tier": 3,
+        "mode": "daemon",
+        "type": "storage",
+        "compact": true,
+        "connectionType": "local",
+        "dataSource": "push",
+        "adminUI": {
+            "config": "json"
+        },
+        "dependencies": [
+            {
+                "js-controller": ">=6.0.11"
+            }
+        ],
+        "globalDependencies": [
+            {
+                "admin": ">=7.0.23"
+            }
+        ]
+    },
+    "native": {
+        "option1": true,
+        "option2": "42"
+    },
+    "objects": [],
+    "instanceObjects": []
+}
