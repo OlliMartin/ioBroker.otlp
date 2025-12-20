@@ -16,7 +16,21 @@
                     ],
                     "label": "Protocol",
                     "sm": 12,
-                    "md": 2
+                    "md": 4
+                },
+                "host": {
+                    "type": "text",
+                    "label": "Host",
+                    "sm": 12,
+                    "md": 4
+                },
+                "port": {
+                    "type": "number",
+                    "label": "Port",
+                    "min": 1,
+                    "max": 65565,
+                    "sm": 12,
+                    "md": 4
                 },
                 "otlProtocol": {
                     "newLine": true,
@@ -28,30 +42,25 @@
                     ],
                     "label": "Open Telemetry Protocol",
                     "sm": 12,
-                    "md": 2
+                    "md": 3
                 },
-                "host": {
+                "meterName": {
                     "type": "text",
-                    "label": "Host",
-                    "sm": 12,
-                    "md": 8
-                },
-                "port": {
-                    "type": "number",
-                    "label": "Port",
+                    "label": "Meter Name",
                     "min": 1,
                     "max": 65565,
                     "sm": 12,
-                    "md": 2
+                    "md": 3
                 },
                 "headers": {
+                    "newLine": true,
                     "type": "table",
                     "label": "Headers",
                     "uniqueColumns": ["key"],
                     "encryptedAttributes": ["value"],
                     "items": [
                         {
-                            "type": "string",
+                            "type": "text",
                             "width": "50%",
                             "attr": "key",
                             "title": {
@@ -59,7 +68,7 @@
                             }
                         },
                         {
-                            "type": "string",
+                            "type": "text",
                             "width": "50%",
                             "attr": "value",
                             "title": {

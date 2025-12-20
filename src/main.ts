@@ -11,7 +11,7 @@ import { OTLPMetricExporter as OTLPGrpcExporter } from '@opentelemetry/exporter-
 import { resourceFromAttributes, emptyResource } from '@opentelemetry/resources';
 
 import * as utils from '@iobroker/adapter-core';
-import type { InfluxDBAdapterConfig, InfluxDbCustomConfig, InfluxDbCustomConfigTyped } from './types';
+import type { OtlpAdapterConfig, OtlpCustomConfig, OtlpCustomConfigTyped } from './types';
 
 function isNullOrUndefined(obj?: any): obj is null {
     return obj === undefined || obj === null;
@@ -41,7 +41,7 @@ function transformAttributes(
     return attributesFromConfig.reduce((prev, tuple) => ({ ...prev, [tuple.key]: tuple.value }), {});
 }
 
-interface SavedInfluxDbCustomConfig extends InfluxDbCustomConfigTyped {
+interface SavedOtlpCustomConfig extends OtlpCustomConfigTyped {
     config: string;
     realId: string;
     state: ioBroker.State | null | undefined;
@@ -50,10 +50,8 @@ interface SavedInfluxDbCustomConfig extends InfluxDbCustomConfigTyped {
 }
 
 class Otlp extends utils.Adapter {
-    declare config: InfluxDBAdapterConfig;
+    declare config: OtlpAdapterConfig;
 
-    // mapping from ioBroker ID to Alias ID
-    private readonly _aliasMap: { [ioBrokerId: string]: string } = {};
     private _subscribeAll = false;
 
     private _meterProvider: MeterProvider | null = null;
@@ -62,8 +60,8 @@ class Otlp extends utils.Adapter {
     private _connected: boolean = false;
 
     // Mapping from AliasID to ioBroker ID
-    private readonly _influxDPs: {
-        [ioBrokerId: string]: SavedInfluxDbCustomConfig;
+    private readonly _trackedDataPoints: {
+        [ioBrokerId: string]: SavedOtlpCustomConfig;
     } = {};
 
     private readonly _instrumentLookup: Record<string, Gauge> = {};
@@ -144,8 +142,9 @@ class Otlp extends utils.Adapter {
             resource,
         });
 
-        // TODO: Allow providing meter name from adapter config.
-        this._meter = this._meterProvider.getMeter('ioBroker.otlp', undefined, {});
+        const { meterName } = this.config;
+
+        this._meter = this._meterProvider.getMeter(meterName ?? this.namespace, undefined, {});
         this.setConnected(true);
 
         await this.loadCustomEntitiesAsync();
@@ -157,17 +156,17 @@ class Otlp extends utils.Adapter {
     }
 
     private subscribeToStates(): void {
-        // If we have less than 20 datapoints, subscribe individually, else subscribe to all
-        if (Object.keys(this._influxDPs).length < 20) {
-            this.log.info(`subscribing to ${Object.keys(this._influxDPs).length} data points`);
-            for (const _id in this._influxDPs) {
-                if (Object.prototype.hasOwnProperty.call(this._influxDPs, _id)) {
-                    this.subscribeForeignStates(this._influxDPs[_id].realId);
+        // If we have less than 20 data points, subscribe individually, else subscribe to all
+        if (Object.keys(this._trackedDataPoints).length < 20) {
+            this.log.info(`subscribing to ${Object.keys(this._trackedDataPoints).length} data points`);
+            for (const _id in this._trackedDataPoints) {
+                if (Object.prototype.hasOwnProperty.call(this._trackedDataPoints, _id)) {
+                    this.subscribeForeignStates(this._trackedDataPoints[_id].realId);
                 }
             }
         } else {
             this.log.debug(
-                `subscribing to all data points as we have ${Object.keys(this._influxDPs).length} data points to log`,
+                `subscribing to all data points as we have ${Object.keys(this._trackedDataPoints).length} data points to log`,
             );
             this._subscribeAll = true;
             this.subscribeForeignStates('*');
@@ -187,50 +186,44 @@ class Otlp extends utils.Adapter {
             const item: {
                 id: string;
                 value: {
-                    [key: `${string}.${number}`]: InfluxDbCustomConfigTyped;
+                    [key: `${string}.${number}`]: OtlpCustomConfigTyped;
                 };
             } = row;
 
-            let id = item.id;
+            const id = item.id;
             const realId = id;
 
-            if (item.value[this.namespace]?.aliasId) {
-                this._aliasMap[id] = item.value[this.namespace].aliasId;
-                this.log.debug(`Found Alias: ${id} --> ${this._aliasMap[id]}`);
-                id = this._aliasMap[id];
-            }
+            this._trackedDataPoints[id] = item.value[this.namespace] as SavedOtlpCustomConfig;
 
-            this._influxDPs[id] = item.value[this.namespace] as SavedInfluxDbCustomConfig;
-
-            this._influxDPs[id].config = JSON.stringify(item.value[this.namespace]);
+            this._trackedDataPoints[id].config = JSON.stringify(item.value[this.namespace]);
             this.log.debug(`enabled logging of ${id}, Alias=${id !== realId} points now activated`);
 
-            this._influxDPs[id].realId = realId;
+            this._trackedDataPoints[id].realId = realId;
         }
     }
 
     private createMetricInstruments(): void {
-        this.log.info(`Creating instruments for ${Object.keys(this._influxDPs).length} data points.`);
+        this.log.info(`Creating instruments for ${Object.keys(this._trackedDataPoints).length} data points.`);
 
-        for (const trackedDataPointKey of Object.keys(this._influxDPs)) {
+        for (const trackedDataPointKey of Object.keys(this._trackedDataPoints)) {
             this.createInstrumentForDataPointKey(trackedDataPointKey);
         }
     }
 
-    private getInstrumentIdentifier(dataPoint: SavedInfluxDbCustomConfig): string {
+    private getInstrumentIdentifier(dataPoint: SavedOtlpCustomConfig): string {
         const { aliasId, realId } = dataPoint;
         return isNullOrUndefined(aliasId) || aliasId.trim() === '' ? realId : aliasId;
     }
 
     private createInstrumentForDataPointKey(trackedDataPointKey: string): void {
-        if (!Object.prototype.hasOwnProperty.call(this._influxDPs, trackedDataPointKey)) {
+        if (!Object.prototype.hasOwnProperty.call(this._trackedDataPoints, trackedDataPointKey)) {
             this.log.warn(
                 `Expected instrument '${trackedDataPointKey}' to be present in data points, but it was not. Skipping.`,
             );
             return;
         }
 
-        const trackedDataPoint = this._influxDPs[trackedDataPointKey];
+        const trackedDataPoint = this._trackedDataPoints[trackedDataPointKey];
         const instrumentIdentifier = this.getInstrumentIdentifier(trackedDataPoint);
 
         if (isNullOrUndefined(this._meter)) {
@@ -267,7 +260,7 @@ class Otlp extends utils.Adapter {
         }
     }
 
-    private isTrackedDataPoint(object: unknown): object is InfluxDbCustomConfig {
+    private isTrackedDataPoint(object: unknown): object is OtlpCustomConfig {
         if (object === null || object === undefined) {
             return false;
         }
@@ -279,8 +272,6 @@ class Otlp extends utils.Adapter {
     }
 
     private onObjectChange(id: string, obj: ioBroker.Object | null | undefined): void {
-        const formerAliasId = this._aliasMap[id] ? this._aliasMap[id] : id;
-
         if (isNullOrUndefined(obj?.common?.custom?.[this.namespace])) {
             return;
         }
@@ -291,77 +282,55 @@ class Otlp extends utils.Adapter {
             return;
         }
 
+        // TODO: If an alias is added/removed for an existing gauge,
+        // then the name is only added after restarting the adapter.
+        // FIX ME.
+
         if (customConfig.enabled) {
-            this.addTrackedAlias(id, customConfig, formerAliasId);
+            this.addTrackedDataPoint(id, customConfig);
             this.createInstrumentForDataPointKey(id);
             void this.writeInitialValue(id);
         } else {
-            this.removeTrackedAlias(id, formerAliasId);
+            this.removeTrackedDataPoint(id);
             this.removeInstrumentForDataPointKey(id);
         }
     }
 
-    private addTrackedAlias(id: string, customConfig: InfluxDbCustomConfig, formerAliasId: string): void {
-        const realId = id;
-        let checkForRemove = true;
-
-        if (customConfig.aliasId) {
-            if (customConfig.aliasId !== id) {
-                this._aliasMap[id] = customConfig.aliasId;
-                this.log.debug(`Registered Alias: ${id} --> ${this._aliasMap[id]}`);
-                checkForRemove = false;
-            } else {
-                this.log.warn(`Ignoring Alias-ID because identical to ID for ${id}`);
-                customConfig.aliasId = '';
-            }
-        }
-
-        if (checkForRemove && this._aliasMap[id]) {
-            this.log.debug(`Removed Alias: ${id} !-> ${this._aliasMap[id]}`);
-            delete this._aliasMap[id];
-        }
-
+    private addTrackedDataPoint(id: string, customConfig: OtlpCustomConfig): void {
         // if not yet subscribed
-        if (!this._influxDPs[formerAliasId] && !this._subscribeAll) {
-            if (Object.keys(this._influxDPs).length >= 19) {
+        if (!this._trackedDataPoints[id] && !this._subscribeAll) {
+            if (Object.keys(this._trackedDataPoints).length >= 19) {
                 // unsubscribe all subscriptions and subscribe to all
-                for (const _id in this._influxDPs) {
-                    this.unsubscribeForeignStates(this._influxDPs[_id].realId);
+                for (const _id in this._trackedDataPoints) {
+                    this.unsubscribeForeignStates(this._trackedDataPoints[_id].realId);
                 }
                 this._subscribeAll = true;
                 this.subscribeForeignStates('*');
             } else {
-                this.subscribeForeignStates(realId);
+                this.subscribeForeignStates(id);
             }
         }
 
-        const customSettings: InfluxDbCustomConfig = customConfig;
+        const customSettings: OtlpCustomConfig = customConfig;
 
-        const state = this._influxDPs[formerAliasId] ? this._influxDPs[formerAliasId].state : null;
-        const skipped = this._influxDPs[formerAliasId] ? this._influxDPs[formerAliasId].skipped : null;
+        const state = this._trackedDataPoints[id] ? this._trackedDataPoints[id].state : null;
+        const skipped = this._trackedDataPoints[id] ? this._trackedDataPoints[id].skipped : null;
 
-        this._influxDPs[id] = customSettings as SavedInfluxDbCustomConfig;
-        this._influxDPs[id].config = JSON.stringify(customSettings);
-        this._influxDPs[id].realId = realId;
-        this._influxDPs[id].state = state;
-        this._influxDPs[id].skipped = skipped;
+        this._trackedDataPoints[id] = customSettings as SavedOtlpCustomConfig;
+        this._trackedDataPoints[id].config = JSON.stringify(customSettings);
+        this._trackedDataPoints[id].realId = id;
+        this._trackedDataPoints[id].state = state;
+        this._trackedDataPoints[id].skipped = skipped;
 
-        this.log.info(`enabled logging of ${id}, Alias=${id !== realId}`);
+        this.log.info(`enabled logging of ${id}, Alias=${!!customSettings.aliasId}`);
     }
 
-    private removeTrackedAlias(id: string, formerAliasId: string): void {
-        if (this._aliasMap[id]) {
-            this.log.debug(`Removed Alias: ${id} !-> ${this._aliasMap[id]}`);
-            delete this._aliasMap[id];
-        }
-
-        id = formerAliasId;
-
-        if (!this._influxDPs[id]) {
+    private removeTrackedDataPoint(id: string): void {
+        if (!this._trackedDataPoints[id]) {
             return;
         }
 
-        delete this._influxDPs[id];
+        delete this._trackedDataPoints[id];
         this.log.info(`disabled logging of ${id}`);
 
         if (!this._subscribeAll) {
@@ -372,12 +341,12 @@ class Otlp extends utils.Adapter {
     async writeInitialValue(id: string): Promise<void> {
         const state = await this.getForeignStateAsync(id);
 
-        if (!state || !this._influxDPs[id]) {
+        if (!state || !this._trackedDataPoints[id]) {
             return;
         }
 
         state.from = `system.adapter.${this.namespace}`;
-        this._influxDPs[id].state = state;
+        this._trackedDataPoints[id].state = state;
 
         this.recordStateByIobId(id, state);
     }
@@ -387,7 +356,7 @@ class Otlp extends utils.Adapter {
             return;
         }
 
-        if (isNullOrUndefined(this._influxDPs[id])) {
+        if (isNullOrUndefined(this._trackedDataPoints[id])) {
             return;
         }
 
@@ -395,7 +364,7 @@ class Otlp extends utils.Adapter {
     }
 
     private recordStateByIobId(id: string, state: ioBroker.State): void {
-        if (!Object.prototype.hasOwnProperty.call(this._influxDPs, id)) {
+        if (!Object.prototype.hasOwnProperty.call(this._trackedDataPoints, id)) {
             this.log.warn(`Expected id=${id} to have a valid data point configuration, but it does not. Skipping.`);
             return;
         }
@@ -405,7 +374,7 @@ class Otlp extends utils.Adapter {
             return;
         }
 
-        const dataPointCfg = this._influxDPs[id];
+        const dataPointCfg = this._trackedDataPoints[id];
         const instrument = this._instrumentLookup[id];
         this.log.debug(`Received state change for tracked data point: ${id}. Persisting.`);
 

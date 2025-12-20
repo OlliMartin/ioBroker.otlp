@@ -3,7 +3,7 @@
 /**
  *
  */
-export interface InfluxDbCustomConfig {
+export interface OtlpCustomConfig {
     /**
      *
      */
@@ -17,7 +17,7 @@ export interface InfluxDbCustomConfig {
 /**
  *
  */
-export interface InfluxDBAdapterConfig {
+export interface OtlpAdapterConfig {
     /**
      *
      */
@@ -37,6 +37,10 @@ export interface InfluxDBAdapterConfig {
     /**
      *
      */
+    meterName: string;
+    /**
+     *
+     */
     headers: Record<string, string>;
     /**
      *
@@ -47,7 +51,7 @@ export interface InfluxDBAdapterConfig {
 /**
  *
  */
-export interface InfluxDbCustomConfigTyped {
+export interface OtlpCustomConfigTyped {
     /**
      *
      */

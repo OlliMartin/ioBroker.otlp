@@ -82,54 +82,36 @@
         ]
     },
     "native": {
-        "debounce": 1000,
-        "retention": 31536000,
-        "dbname": "iobroker",
         "host": "localhost",
         "protocol": "http",
-        "path": "",
-        "port": 8086,
-        "user": "",
-        "password": "",
-        "token": "",
-        "organization": "",
-        "round": 4,
-        "seriesBufferMax": 0,
-        "seriesBufferFlushInterval": 600,
-        "changesRelogInterval": 0,
-        "changesMinDelta": 0,
-        "reconnectInterval": 10000,
-        "pingInterval": 15000,
-        "requestTimeout": 30000,
-        "validateSSL": true,
-        "dbversion": "1.x",
-        "usetags": false,
-        "pingserver": true,
-        "blockTime": 0,
-        "debounceTime": 0,
-        "disableSkippedValueLogging": false,
-        "enableLogging": false,
-        "customRetentionDuration": 365,
-        "relogLastValueOnStart": true,
-        "dockerInflux": {
-            "enabled": false,
-            "bind": "127.0.0.1",
-            "stopIfInstanceStopped": true,
-            "port": "8086",
-            "autoImageUpdate": true
-        },
-        "dockerGrafana": {
-            "enabled": false,
-            "bind": "0.0.0.0",
-            "stopIfInstanceStopped": true,
-            "port": "3000",
-            "autoImageUpdate": true,
-            "adminSecurityPassword": "iobroker",
-            "serverRootUrl": "",
-            "plugins": [],
-            "usersAllowSignUp": true
-        }
+        "otlProtocol": "http",
+        "meterName": "ioBroker.otlp",
+        "port": 4317,
+        "headers": [],
+        "resourceAttributes": []
     },
     "objects": [],
-    "instanceObjects": []
+    "instanceObjects": [
+        {
+            "_id": "info",
+            "type": "channel",
+            "common": {
+                "name": "Information"
+            },
+            "native": {}
+        },
+        {
+            "_id": "info.connection",
+            "type": "state",
+            "common": {
+                "role": "indicator.connected",
+                "name": "If connected to OTLP Gateway",
+                "type": "boolean",
+                "read": true,
+                "write": false,
+                "def": false
+            },
+            "native": {}
+        }
+    ]
 }
