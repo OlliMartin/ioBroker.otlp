@@ -1,8 +1,21 @@
 {
   "common": {
     "name": "otlp",
-    "version": "0.0.1-rc.2",
+    "version": "0.0.1-rc.3",
     "news": {
+      "0.0.1-rc.3": {
+        "en": "Still trying to automate release",
+        "de": "Immer noch versuchen, die Freigabe zu automatisieren",
+        "ru": "Все еще пытается автоматизировать выпуск",
+        "pt": "Ainda tentando automatizar o lançamento",
+        "nl": "Nog steeds bezig met automatiseren",
+        "fr": "Toujours en essayant d'automatiser la publication",
+        "it": "Ancora cercando di automatizzare il rilascio",
+        "es": "Aún tratando de automatizar la liberación",
+        "pl": "Wciąż próbuje zautomatyzować wydanie",
+        "uk": "На жаль, намагаються автоматизувати реліз",
+        "zh-cn": "还在尝试自动释放"
+      },
       "0.0.1-rc.2": {
         "en": "preparing automated release",
         "de": "automatisierte veröffentlichung",
