@@ -2,6 +2,11 @@
  * Created with @iobroker/create-adapter v3.1.2
  */
 
+import type { Gauge, Meter as IMeter } from '@opentelemetry/api';
+import { MeterProvider, PeriodicExportingMetricReader } from '@opentelemetry/sdk-metrics';
+import type { OTLPMetricExporterOptions } from '@opentelemetry/exporter-metrics-otlp-http';
+import { OTLPMetricExporter as OTLPHttpExporter } from '@opentelemetry/exporter-metrics-otlp-http';
+
 import * as utils from '@iobroker/adapter-core';
 import type { InfluxDBAdapterConfig, InfluxDbCustomConfig, InfluxDbCustomConfigTyped } from './types';
 
@@ -34,6 +39,9 @@ function parseNumberWithNull(value: any): number | null {
     if (typeof value === 'string') {
         const v = parseFloat(value);
         return isNaN(v) ? null : v;
+    }
+    if (typeof value === 'boolean') {
+        return value ? 1 : 0;
     }
     return null;
 }
@@ -108,10 +116,15 @@ class Otlp extends utils.Adapter {
     private readonly _aliasMap: { [ioBrokerId: string]: string } = {};
     private _subscribeAll = false;
 
+    private _meterProvider: MeterProvider | null = null;
+    private _meter: IMeter | null = null;
+
     // Mapping from AliasID to ioBroker ID
     private readonly _influxDPs: {
         [ioBrokerId: string]: SavedInfluxDbCustomConfig;
     } = {};
+
+    private readonly _instrumentLookup: Record<string, Gauge> = {};
 
     public constructor(options: Partial<utils.AdapterOptions> = {}) {
         super({
@@ -126,7 +139,30 @@ class Otlp extends utils.Adapter {
     }
 
     private async onReady(): Promise<void> {
+        // TODO: Load gRPC/http-proto config
+        // -> Create http/grpc exporter respectively
+
+        const collectorOptions: OTLPMetricExporterOptions = {
+            url: 'https://otlp.acaad.dev:4318/v1/metrics',
+        };
+
+        const metricExporter = new OTLPHttpExporter(collectorOptions);
+
+        this._meterProvider = new MeterProvider({
+            readers: [
+                new PeriodicExportingMetricReader({
+                    exporter: metricExporter,
+                    exportIntervalMillis: 1000,
+                }),
+            ],
+        });
+
+        // TODO: Allow providing meter name from adapter config.
+        this._meter = this._meterProvider.getMeter('ioBroker.otlp', undefined, {});
+
         await this.loadCustomEntitiesAsync();
+
+        this.createMetricInstruments();
 
         this.subscribeToStates();
         this.subscribeForeignObjects('*');
@@ -135,7 +171,7 @@ class Otlp extends utils.Adapter {
     private subscribeToStates(): void {
         // If we have less than 20 datapoints, subscribe individually, else subscribe to all
         if (Object.keys(this._influxDPs).length < 20) {
-            this.log.info(`subscribing to ${Object.keys(this._influxDPs).length} datapoints`);
+            this.log.info(`subscribing to ${Object.keys(this._influxDPs).length} data points`);
             for (const _id in this._influxDPs) {
                 if (Object.prototype.hasOwnProperty.call(this._influxDPs, _id)) {
                     this.subscribeForeignStates(this._influxDPs[_id].realId);
@@ -143,7 +179,7 @@ class Otlp extends utils.Adapter {
             }
         } else {
             this.log.debug(
-                `subscribing to all datapoints as we have ${Object.keys(this._influxDPs).length} datapoints to log`,
+                `subscribing to all data points as we have ${Object.keys(this._influxDPs).length} data points to log`,
             );
             this._subscribeAll = true;
             this.subscribeForeignStates('*');
@@ -189,9 +225,56 @@ class Otlp extends utils.Adapter {
         }
     }
 
-    private onUnload(callback: () => void): void {
+    private createMetricInstruments(): void {
+        this.log.info(`Creating instruments for ${Object.keys(this._influxDPs).length} data points.`);
+
+        for (const trackedDataPointKey of Object.keys(this._influxDPs)) {
+            this.createInstrumentForDataPointKey(trackedDataPointKey);
+        }
+    }
+
+    private getInstrumentIdentifier(dataPoint: SavedInfluxDbCustomConfig): string {
+        const { aliasId, realId } = dataPoint;
+
+        // TBD: Check if this is required.
+        return isNullOrUndefined(aliasId) || aliasId.trim() === '' ? realId : aliasId;
+    }
+
+    private createInstrumentForDataPointKey(trackedDataPointKey: string): void {
+        const trackedDataPoint = this._influxDPs[trackedDataPointKey];
+        const instrumentIdentifier = this.getInstrumentIdentifier(trackedDataPoint);
+
+        if (isNullOrUndefined(this._meter)) {
+            this.log.error('No meter instance was created. This should never happen.');
+            return;
+        }
+
+        this.log.debug(`Creating gauge with name: '${instrumentIdentifier}'`);
+        this._instrumentLookup[instrumentIdentifier] = this._meter.createGauge(instrumentIdentifier);
+    }
+
+    private removeInstrumentForDataPointKey(trackedDataPointKey: string): void {
+        const trackedDataPoint = this._influxDPs[trackedDataPointKey];
+        const instrumentIdentifier = this.getInstrumentIdentifier(trackedDataPoint);
+
+        if (!Object.prototype.hasOwnProperty.call(this._instrumentLookup, instrumentIdentifier)) {
+            this.log.warn(
+                `Expected instrument '${instrumentIdentifier}' to be present, but it was not. Skipping removal.`,
+            );
+            return;
+        }
+
+        delete this._instrumentLookup[instrumentIdentifier];
+    }
+
+    private async onUnload(callback: () => void): Promise<void> {
         try {
-            this.log.info('Shutting down adapter.');
+            this.log.info('Shutting down open telemetry SDK.');
+
+            if (!isNullOrUndefined(this._meterProvider)) {
+                await this._meterProvider.forceFlush();
+                await this._meterProvider.shutdown();
+            }
         } finally {
             callback();
         }
@@ -223,8 +306,10 @@ class Otlp extends utils.Adapter {
 
         if (customConfig.enabled) {
             this.addTrackedAlias(id, customConfig, formerAliasId);
+            this.createInstrumentForDataPointKey(id);
         } else {
             this.removeTrackedAlias(id, formerAliasId);
+            this.removeInstrumentForDataPointKey(id);
         }
     }
 
@@ -347,7 +432,28 @@ class Otlp extends utils.Adapter {
             return;
         }
 
-        this.log.debug(`Received state change for tracked data point: ${id}.`);
+        if (!Object.prototype.hasOwnProperty.call(this._instrumentLookup, id)) {
+            this.log.warn(`Expected id=${id} to have a valid instrument, but it does not. Skipping data point.`);
+            return;
+        }
+
+        const instrument = this._instrumentLookup[id];
+        this.log.debug(`Received state change for tracked data point: ${id}. Persisting.`);
+
+        const otlpValue = this.transformStateValue(instrument, state.val);
+        this.log.debug(`Determined value to write: '${otlpValue}'.`);
+
+        if (isNullOrUndefined(otlpValue)) {
+            return;
+        }
+
+        instrument.record(otlpValue);
+
+        this._meterProvider?.forceFlush();
+    }
+
+    private transformStateValue(instrument: Gauge, iobValue: ioBroker.StateValue): number | null {
+        return parseNumberWithNull(iobValue);
     }
 
     private onMessage(msg: ioBroker.Message): void {

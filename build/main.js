@@ -21,6 +21,8 @@ var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__ge
   isNodeMode || !mod || !mod.__esModule ? __defProp(target, "default", { value: mod, enumerable: true }) : target,
   mod
 ));
+var import_sdk_metrics = require("@opentelemetry/sdk-metrics");
+var import_exporter_metrics_otlp_http = require("@opentelemetry/exporter-metrics-otlp-http");
 var utils = __toESM(require("@iobroker/adapter-core"));
 function isNullOrUndefined(obj) {
   return obj === void 0 || obj === null;
@@ -48,6 +50,9 @@ function parseNumberWithNull(value) {
   if (typeof value === "string") {
     const v = parseFloat(value);
     return isNaN(v) ? null : v;
+  }
+  if (typeof value === "boolean") {
+    return value ? 1 : 0;
   }
   return null;
 }
@@ -96,8 +101,11 @@ class Otlp extends utils.Adapter {
   // mapping from ioBroker ID to Alias ID
   _aliasMap = {};
   _subscribeAll = false;
+  _meterProvider = null;
+  _meter = null;
   // Mapping from AliasID to ioBroker ID
   _influxDPs = {};
+  _instrumentLookup = {};
   constructor(options = {}) {
     super({
       ...options,
@@ -110,13 +118,27 @@ class Otlp extends utils.Adapter {
     this.on("unload", this.onUnload.bind(this));
   }
   async onReady() {
+    const collectorOptions = {
+      url: "https://otlp.acaad.dev:4318/v1/metrics"
+    };
+    const metricExporter = new import_exporter_metrics_otlp_http.OTLPMetricExporter(collectorOptions);
+    this._meterProvider = new import_sdk_metrics.MeterProvider({
+      readers: [
+        new import_sdk_metrics.PeriodicExportingMetricReader({
+          exporter: metricExporter,
+          exportIntervalMillis: 1e3
+        })
+      ]
+    });
+    this._meter = this._meterProvider.getMeter("ioBroker.otlp", void 0, {});
     await this.loadCustomEntitiesAsync();
+    this.createMetricInstruments();
     this.subscribeToStates();
     this.subscribeForeignObjects("*");
   }
   subscribeToStates() {
     if (Object.keys(this._influxDPs).length < 20) {
-      this.log.info(`subscribing to ${Object.keys(this._influxDPs).length} datapoints`);
+      this.log.info(`subscribing to ${Object.keys(this._influxDPs).length} data points`);
       for (const _id in this._influxDPs) {
         if (Object.prototype.hasOwnProperty.call(this._influxDPs, _id)) {
           this.subscribeForeignStates(this._influxDPs[_id].realId);
@@ -124,7 +146,7 @@ class Otlp extends utils.Adapter {
       }
     } else {
       this.log.debug(
-        `subscribing to all datapoints as we have ${Object.keys(this._influxDPs).length} datapoints to log`
+        `subscribing to all data points as we have ${Object.keys(this._influxDPs).length} data points to log`
       );
       this._subscribeAll = true;
       this.subscribeForeignStates("*");
@@ -159,9 +181,44 @@ class Otlp extends utils.Adapter {
       await this.writeInitialValue(realId, id);
     }
   }
-  onUnload(callback) {
+  createMetricInstruments() {
+    this.log.info(`Creating instruments for ${Object.keys(this._influxDPs).length} data points.`);
+    for (const trackedDataPointKey of Object.keys(this._influxDPs)) {
+      this.createInstrumentForDataPointKey(trackedDataPointKey);
+    }
+  }
+  getInstrumentIdentifier(dataPoint) {
+    const { aliasId, realId } = dataPoint;
+    return isNullOrUndefined(aliasId) || aliasId.trim() === "" ? realId : aliasId;
+  }
+  createInstrumentForDataPointKey(trackedDataPointKey) {
+    const trackedDataPoint = this._influxDPs[trackedDataPointKey];
+    const instrumentIdentifier = this.getInstrumentIdentifier(trackedDataPoint);
+    if (isNullOrUndefined(this._meter)) {
+      this.log.error("No meter instance was created. This should never happen.");
+      return;
+    }
+    this.log.debug(`Creating gauge with name: '${instrumentIdentifier}'`);
+    this._instrumentLookup[instrumentIdentifier] = this._meter.createGauge(instrumentIdentifier);
+  }
+  removeInstrumentForDataPointKey(trackedDataPointKey) {
+    const trackedDataPoint = this._influxDPs[trackedDataPointKey];
+    const instrumentIdentifier = this.getInstrumentIdentifier(trackedDataPoint);
+    if (!Object.prototype.hasOwnProperty.call(this._instrumentLookup, instrumentIdentifier)) {
+      this.log.warn(
+        `Expected instrument '${instrumentIdentifier}' to be present, but it was not. Skipping removal.`
+      );
+      return;
+    }
+    delete this._instrumentLookup[instrumentIdentifier];
+  }
+  async onUnload(callback) {
     try {
-      this.log.info("Shutting down adapter.");
+      this.log.info("Shutting down open telemetry SDK.");
+      if (!isNullOrUndefined(this._meterProvider)) {
+        await this._meterProvider.forceFlush();
+        await this._meterProvider.shutdown();
+      }
     } finally {
       callback();
     }
@@ -184,8 +241,10 @@ class Otlp extends utils.Adapter {
     }
     if (customConfig.enabled) {
       this.addTrackedAlias(id, customConfig, formerAliasId);
+      this.createInstrumentForDataPointKey(id);
     } else {
       this.removeTrackedAlias(id, formerAliasId);
+      this.removeInstrumentForDataPointKey(id);
     }
   }
   addTrackedAlias(id, customConfig, formerAliasId) {
@@ -271,13 +330,29 @@ class Otlp extends utils.Adapter {
     this.log.debug("writeInitialValue called");
   }
   onStateChange(id, state) {
+    var _a;
     if (!state) {
       return;
     }
     if (isNullOrUndefined(this._influxDPs[id])) {
       return;
     }
-    this.log.debug(`Received state change for tracked data point: ${id}.`);
+    if (!Object.prototype.hasOwnProperty.call(this._instrumentLookup, id)) {
+      this.log.warn(`Expected id=${id} to have a valid instrument, but it does not. Skipping data point.`);
+      return;
+    }
+    const instrument = this._instrumentLookup[id];
+    this.log.debug(`Received state change for tracked data point: ${id}. Persisting.`);
+    const otlpValue = this.transformStateValue(instrument, state.val);
+    this.log.debug(`Determined value to write: '${otlpValue}'.`);
+    if (isNullOrUndefined(otlpValue)) {
+      return;
+    }
+    instrument.record(otlpValue);
+    (_a = this._meterProvider) == null ? void 0 : _a.forceFlush();
+  }
+  transformStateValue(instrument, iobValue) {
+    return parseNumberWithNull(iobValue);
   }
   onMessage(msg) {
     this.log.debug(`Incoming message ${msg.command} from ${msg.from}`);
