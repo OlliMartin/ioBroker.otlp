@@ -12,9 +12,32 @@
 
 ## Open Telemetry Protocol (OTLP) Adapter for ioBroker
 
-The adapter allows pushing historical data into a OTLP-compatible gateway.
+This adapter allows pushing historical data into an OTLP-compatible gateway.
 
 _Retrieval_ of historical data is - by design - __not__ possible.
+Since data points/states are published as metrics, _only numerical values_ can be written.
+
+## Why?
+
+Exporting data points - well `number` and `boolean` - into a OTLP compatible gateway allows to abstract from the 
+underlying data store. 
+
+With the great number of open telemetry exporters available, this project functions as an adapter
+to storage like
+- [Prometheus](https://prometheus.io/)/[Mimir](https://github.com/grafana/mimir)
+- InfluxDB (obviously not as powerful as the [existing adapter](https://github.com/ioBroker/ioBroker.influxdb/tree/master))
+- Kafka
+
+These storage backends are configured within the open telemetry collector (which is the target of this service), 
+where further customization may be applied. If a non-numerical state is enabled for export, 
+it will be _ignored_ and no data will be written.
+
+## Non Goals
+
+**All data points/states must be boolean or number, since they are treated as a metric, more specifically a Gauge.**
+~~~~
+A string or even complex object as a metric just does not make sense; And it would not work. 
+There will never be support for anything besides numbers and boolean.
 
 ## Instance Configuration
 
