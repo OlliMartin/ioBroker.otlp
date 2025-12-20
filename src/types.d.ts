@@ -7,6 +7,11 @@ export interface InfluxDbCustomConfig {
     /**
      *
      */
+    enabled: boolean | undefined;
+
+    /**
+     *
+     */
     debounceTime: number | string;
     /**
      *
