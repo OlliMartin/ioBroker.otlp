@@ -102,8 +102,8 @@ class Otlp extends utils.Adapter {
       return;
     }
     this._resource = !!resourceAttributes && Object.keys(resourceAttributes).length > 0 ? (0, import_resources.resourceFromAttributes)(iobTable2Record(resourceAttributes)) : (0, import_resources.emptyResource)();
-    this.createMeter(metricExporter);
     await this.loadCustomEntitiesAsync();
+    this.createMeter(metricExporter);
     this.createMetricInstruments();
     this.subscribeToStates();
     this.subscribeForeignObjects("*");
@@ -309,6 +309,7 @@ class Otlp extends utils.Adapter {
     let metricExporter = null;
     const { headers } = this.config;
     const headerRecord = iobTable2Record(headers);
+    this.log.debug(`There are ${Object.keys(headers).length} header kvps to append.`);
     if (this._otlProtocol === "http") {
       otlpEndpoint = `${this._protocol}://${this._host}:${this._port}/v1/metrics`;
       const collectorOptions = {

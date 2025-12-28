@@ -9,12 +9,13 @@
       "maxLength": 255,
       "default": "",
       "sm": 12,
-      "help": "Alias Info"
+      "help": "Overwrites the name of the metric to export"
     },
     "attributes": {
       "type": "table",
       "label": "Attributes",
       "uniqueColumns": ["key"],
+      "help": "Attributes to attach to this data-point's metric",
       "items": [
         {
           "type": "text",

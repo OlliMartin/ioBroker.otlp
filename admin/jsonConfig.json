@@ -10,6 +10,7 @@
                     "newLine": true,
                     "type": "select",
                     "noTranslation": true,
+                    "help": "The protocol of the server (http or https). This is not the open telemetry protocol!",                    
                     "options": [
                         { "label": "HTTP", "value": "http" },
                         { "label": "HTTPS", "value": "https" }
@@ -24,6 +25,8 @@
                 "host": {
                     "type": "text",
                     "label": "Host",
+                    "noTranslation": true,
+                    "help": "The hostname of the target server/otelcol gateway",
                     "sm": 12,
                     "xs": 12,
                     "md": 4,
@@ -33,6 +36,8 @@
                 "port": {
                     "type": "number",
                     "label": "Port",
+                    "noTranslation": true,
+                    "help": "The port of the otelcol gateway. Usually 4317 (gRPC) or 4318 (http)",
                     "min": 1,
                     "max": 65565,
                     "sm": 12,
@@ -45,6 +50,7 @@
                     "newLine": true,
                     "type": "select",
                     "noTranslation": true,
+                    "help": "The protocol used to send telemetry data/metrics (gRPC or http (protobuf))",
                     "options": [
                         { "label": "gRPC", "value": "grpc" },
                         { "label": "HTTP", "value": "http" }
@@ -58,7 +64,9 @@
                 },
                 "meterName": {
                     "type": "text",
+                    "noTranslation": true,
                     "label": "Meter Name",
+                    "help": "The name of the create SDK meter. Usually this is only SDK internal",
                     "sm": 12,
                     "xs": 12,
                     "md": 4,
@@ -68,7 +76,9 @@
                 "headers": {
                     "newLine": true,
                     "type": "table",
+                    "noTranslation": true,
                     "label": "Headers",
+                    "help": "A key-value list of headers to add to each request. This is how authentication may be configured",
                     "uniqueColumns": ["key"],
                     "encryptedAttributes": ["value"],
                     "items": [
@@ -97,7 +107,9 @@
                 },
                 "resourceAttributes": {
                     "type": "table",
+                    "noTranslation": true,
                     "label": "Resource Attributes",
+                    "help": "A key-value list of resource attributes to globally populate",
                     "uniqueColumns": ["key"],
                     "items": [
                         {
