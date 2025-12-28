@@ -9,6 +9,10 @@
       "maxLength": 255,
       "default": "",
       "sm": 12,
+      "xs": 12,
+      "md": 12,
+      "lg": 12,
+      "xl": 12,
       "help": "Overwrites the name of the metric to export"
     },
     "attributes": {
@@ -31,7 +35,10 @@
         }
       ],
       "sm": 12,
-      "md": 6
+      "xs": 12,
+      "md": 12,
+      "lg": 12,
+      "xl": 12
     }
   }
 }
