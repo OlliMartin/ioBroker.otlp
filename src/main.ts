@@ -331,6 +331,7 @@ class Otlp extends utils.Adapter {
         customConfig.enabled ? this.addTrackedDataPoint(id, customConfig) : this.removeTrackedDataPoint(id);
 
         const startMs = performance.now();
+        await this._meterProvider?.forceFlush();
         await this._meterProvider?.shutdown();
 
         const { exporter: nextExporter } = this.createEndpointAndExporter();

@@ -230,7 +230,7 @@ class Otlp extends utils.Adapter {
     return Object.prototype.hasOwnProperty.call(object, "aliasId") && Object.prototype.hasOwnProperty.call(object, "enabled");
   }
   async onObjectChange(id, obj) {
-    var _a, _b, _c;
+    var _a, _b, _c, _d;
     if (isNullOrUndefined((_b = (_a = obj == null ? void 0 : obj.common) == null ? void 0 : _a.custom) == null ? void 0 : _b[this.namespace])) {
       return;
     }
@@ -240,7 +240,8 @@ class Otlp extends utils.Adapter {
     }
     customConfig.enabled ? this.addTrackedDataPoint(id, customConfig) : this.removeTrackedDataPoint(id);
     const startMs = performance.now();
-    await ((_c = this._meterProvider) == null ? void 0 : _c.shutdown());
+    await ((_c = this._meterProvider) == null ? void 0 : _c.forceFlush());
+    await ((_d = this._meterProvider) == null ? void 0 : _d.shutdown());
     const { exporter: nextExporter } = this.createEndpointAndExporter();
     if (isNullOrUndefined(nextExporter)) {
       return;
