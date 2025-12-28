@@ -28,6 +28,7 @@ import { MeterProvider, PeriodicExportingMetricReader } from '@opentelemetry/sdk
 import type { OTLPMetricExporterOptions } from '@opentelemetry/exporter-metrics-otlp-http';
 import { OTLPMetricExporter as OTLPHttpExporter } from '@opentelemetry/exporter-metrics-otlp-http';
 import { OTLPMetricExporter as OTLPGrpcExporter } from '@opentelemetry/exporter-metrics-otlp-grpc';
+import type { Resource } from '@opentelemetry/resources';
 import { resourceFromAttributes, emptyResource } from '@opentelemetry/resources';
 
 import * as utils from '@iobroker/adapter-core';
@@ -67,49 +68,12 @@ interface SavedOtlpCustomConfig extends OtlpCustomConfigTyped {
     lastLogTime?: number;
 }
 
-function createEndpointAndExporter(
-    headers: {
-        key: string;
-        value: string;
-    }[],
-    otlProtocol: 'grpc' | 'http',
-    protocol: 'http' | 'https',
-    host: string,
-    port: number | string,
-): { endpoint: string | null; exporter: PushMetricExporter | null } {
-    let otlpEndpoint: string | null = null;
-    let metricExporter: PushMetricExporter | null = null;
-
-    const headerRecord = iobTable2Record(headers);
-
-    if (otlProtocol === 'http') {
-        otlpEndpoint = `${protocol}://${host}:${port}/v1/metrics`;
-
-        const collectorOptions: OTLPMetricExporterOptions = {
-            url: otlpEndpoint,
-            headers: headerRecord,
-        };
-        metricExporter = new OTLPHttpExporter(collectorOptions);
-    }
-
-    if (otlProtocol === 'grpc') {
-        otlpEndpoint = `${protocol}://${host}:${port}/otlp`;
-
-        const collectorOptions: OTLPMetricExporterOptions = {
-            url: otlpEndpoint,
-            headers: headerRecord,
-        };
-        metricExporter = new OTLPGrpcExporter(collectorOptions);
-    }
-
-    return { endpoint: otlpEndpoint, exporter: metricExporter };
-}
-
 class Otlp extends utils.Adapter {
     declare config: OtlpAdapterConfig;
 
     private _subscribeAll = false;
 
+    private _resource: Resource | null = null;
     private _meterProvider: MeterProvider | null = null;
     private _meter: IMeter | null = null;
 
@@ -133,6 +97,11 @@ class Otlp extends utils.Adapter {
         this.on('unload', this.onUnload.bind(this));
     }
 
+    private _protocol: string = '';
+    private _otlProtocol: string = '';
+    private _host: string = '';
+    private _port: string | number = '';
+
     private async onReady(): Promise<void> {
         this.setConnected(false);
 
@@ -153,10 +122,14 @@ class Otlp extends utils.Adapter {
             });
             return;
         }
+        this._protocol = protocol;
+        this._otlProtocol = otlProtocol;
+        this._host = host;
+        this._port = port;
 
-        const { headers, resourceAttributes } = this.config;
+        const { resourceAttributes } = this.config;
 
-        const connectionValid = await this.testConnectionAsync(headers, otlProtocol, protocol, host, port);
+        const connectionValid = await this.testConnectionAsync();
         this.setConnected(connectionValid);
 
         if (!connectionValid) {
@@ -165,30 +138,18 @@ class Otlp extends utils.Adapter {
             return;
         }
 
-        const { exporter: metricExporter } = createEndpointAndExporter(headers, otlProtocol, protocol, host, port);
+        const { exporter: metricExporter } = this.createEndpointAndExporter();
 
         if (isNullOrUndefined(metricExporter)) {
             return;
         }
 
-        const resource =
+        this._resource =
             !!resourceAttributes && Object.keys(resourceAttributes).length > 0
                 ? resourceFromAttributes(iobTable2Record(resourceAttributes))
                 : emptyResource();
 
-        this._meterProvider = new MeterProvider({
-            readers: [
-                new PeriodicExportingMetricReader({
-                    exporter: metricExporter,
-                    exportIntervalMillis: 1000,
-                }),
-            ],
-            resource,
-        });
-
-        const { meterName } = this.config;
-
-        this._meter = this._meterProvider.getMeter(meterName ?? this.namespace, undefined, {});
+        this.createMeter(metricExporter);
 
         await this.loadCustomEntitiesAsync();
 
@@ -198,23 +159,24 @@ class Otlp extends utils.Adapter {
         this.subscribeForeignObjects('*');
     }
 
-    private testConnectionAsync(
-        headers: {
-            key: string;
-            value: string;
-        }[],
-        otlProtocol: 'grpc' | 'http',
-        protocol: 'http' | 'https',
-        host: string,
-        port: number | string,
-    ): Promise<boolean> {
-        const { endpoint: otlpEndpoint, exporter: metricExporter } = createEndpointAndExporter(
-            headers,
-            otlProtocol,
-            protocol,
-            host,
-            port,
-        );
+    private createMeter(metricExporter: PushMetricExporter): void {
+        this._meterProvider = new MeterProvider({
+            readers: [
+                new PeriodicExportingMetricReader({
+                    exporter: metricExporter,
+                    exportIntervalMillis: 1000,
+                }),
+            ],
+            resource: this._resource ?? emptyResource(),
+        });
+
+        const { meterName } = this.config;
+
+        this._meter = this._meterProvider.getMeter(meterName ?? this.namespace, undefined, {});
+    }
+
+    private testConnectionAsync(): Promise<boolean> {
+        const { endpoint: otlpEndpoint, exporter: metricExporter } = this.createEndpointAndExporter();
 
         if (!otlpEndpoint || !metricExporter) {
             this.log.error('Could not create metric exporter. Cannot continue. Stopping.');
@@ -330,18 +292,6 @@ class Otlp extends utils.Adapter {
         this._instrumentLookup[trackedDataPointKey] = this._meter.createGauge(instrumentIdentifier);
     }
 
-    private removeInstrumentForDataPointKey(trackedDataPointKey: string): void {
-        if (!Object.prototype.hasOwnProperty.call(this._instrumentLookup, trackedDataPointKey)) {
-            this.log.warn(
-                `Expected instrument '${trackedDataPointKey}' to be present, but it was not. Skipping removal.`,
-            );
-            return;
-        }
-
-        this.log.debug(`Removing instrument with id: '${trackedDataPointKey}'.`);
-        delete this._instrumentLookup[trackedDataPointKey];
-    }
-
     private async onUnload(callback: () => void): Promise<void> {
         try {
             this.log.info('Shutting down open telemetry SDK.');
@@ -368,7 +318,7 @@ class Otlp extends utils.Adapter {
         );
     }
 
-    private onObjectChange(id: string, obj: ioBroker.Object | null | undefined): void {
+    private async onObjectChange(id: string, obj: ioBroker.Object | null | undefined): Promise<void> {
         if (isNullOrUndefined(obj?.common?.custom?.[this.namespace])) {
             return;
         }
@@ -379,18 +329,32 @@ class Otlp extends utils.Adapter {
             return;
         }
 
-        // TODO: If an alias is added/removed for an existing gauge,
-        // then the name is only added after restarting the adapter.
-        // FIX ME.
+        customConfig.enabled ? this.addTrackedDataPoint(id, customConfig) : this.removeTrackedDataPoint(id);
 
-        if (customConfig.enabled) {
-            this.addTrackedDataPoint(id, customConfig);
-            this.createInstrumentForDataPointKey(id);
-            void this.writeInitialValue(id);
-        } else {
-            this.removeTrackedDataPoint(id);
-            this.removeInstrumentForDataPointKey(id);
+        const startMs = performance.now();
+        await this._meterProvider?.shutdown();
+
+        const { exporter: nextExporter } = this.createEndpointAndExporter();
+
+        if (isNullOrUndefined(nextExporter)) {
+            return;
         }
+
+        // There is no way to destroy an existing meter (which is valid, because that's usually not how otel works).
+        // Instead, we need to stop the entire SDK and recreate the meters.
+        // This is quite efficient, so it's not an issue.
+
+        this.createMeter(nextExporter);
+        this.createMetricInstruments();
+
+        const duration = performance.now() - startMs;
+        this.log.debug(`Recreated SDK and meters in ${duration}ms.`);
+
+        if (!customConfig.enabled) {
+            return;
+        }
+
+        await this.writeInitialValueAsync(id);
     }
 
     private addTrackedDataPoint(id: string, customConfig: OtlpCustomConfig): void {
@@ -435,7 +399,7 @@ class Otlp extends utils.Adapter {
         }
     }
 
-    async writeInitialValue(id: string): Promise<void> {
+    async writeInitialValueAsync(id: string): Promise<void> {
         const state = await this.getForeignStateAsync(id);
 
         if (!state || !this._trackedDataPoints[id]) {
@@ -458,6 +422,36 @@ class Otlp extends utils.Adapter {
         }
 
         this.recordStateByIobId(id, state);
+    }
+
+    createEndpointAndExporter(): { endpoint: string | null; exporter: PushMetricExporter | null } {
+        let otlpEndpoint: string | null = null;
+        let metricExporter: PushMetricExporter | null = null;
+
+        const { headers } = this.config;
+        const headerRecord = iobTable2Record(headers);
+
+        if (this._otlProtocol === 'http') {
+            otlpEndpoint = `${this._protocol}://${this._host}:${this._port}/v1/metrics`;
+
+            const collectorOptions: OTLPMetricExporterOptions = {
+                url: otlpEndpoint,
+                headers: headerRecord,
+            };
+            metricExporter = new OTLPHttpExporter(collectorOptions);
+        }
+
+        if (this._otlProtocol === 'grpc') {
+            otlpEndpoint = `${this._protocol}://${this._host}:${this._port}/otlp`;
+
+            const collectorOptions: OTLPMetricExporterOptions = {
+                url: otlpEndpoint,
+                headers: headerRecord,
+            };
+            metricExporter = new OTLPGrpcExporter(collectorOptions);
+        }
+
+        return { endpoint: otlpEndpoint, exporter: metricExporter };
     }
 
     private recordStateByIobId(id: string, state: ioBroker.State): void {

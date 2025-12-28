@@ -71,6 +71,8 @@ In addition to the `aliasId` a list of attributes, i.e. key-value pairs, may be 
 ### **WORK IN PROGRESS**
 
 * (OlliMartin) Implement connection test by exporting (empty) dummy metric and shutdown on error
+* (OlliMartin) Recreate all meters on custom config change; Fixes alias renames only taking affect after adapter restart
+* (OlliMartin) Fix [issue #3](https://github.com/OlliMartin/ioBroker.otlp/issues/3) where configured headers would not be applied correctly to the respective exporter 
 
 ### 0.0.3 (2025-12-20)
 
