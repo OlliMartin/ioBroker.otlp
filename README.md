@@ -72,6 +72,7 @@ In addition to the `aliasId` a list of attributes, i.e. key-value pairs, may be 
 
 * (OlliMartin) Add missing layout column definitions to custom settings UI
 * (OlliMartin) Remove unnecessary `noTranslation` flags
+* (OlliMartin) Remove `.stop()` call on invalid configuration
 
 ### 0.0.4 (2025-12-28)
 
