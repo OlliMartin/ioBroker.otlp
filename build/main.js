@@ -72,17 +72,12 @@ class Otlp extends utils.Adapter {
   _host = "";
   _port = "";
   async onReady() {
-    var _a, _b;
     this.setConnected(false);
     const { protocol, otlProtocol, host, port } = this.config;
     if (isNullOrUndefined(protocol) || isNullOrUndefined(otlProtocol) || isNullOrUndefined(host) || isNullOrUndefined(port)) {
       this.log.error(
         "At least one required property was not set. Cannot start. Please adjust the configuration."
       );
-      await ((_a = this.stop) == null ? void 0 : _a.call({
-        exitCode: 1,
-        reason: "Incomplete configuration. Please adjust the configuration."
-      }));
       return;
     }
     this._protocol = protocol;
@@ -94,7 +89,6 @@ class Otlp extends utils.Adapter {
     this.setConnected(connectionValid);
     if (!connectionValid) {
       this.log.info("Provided connection info is invalid. Please adjust the configuration.");
-      await ((_b = this.stop) == null ? void 0 : _b.call({ exitCode: 1, reason: "Invalid configuration. Cannot connect to OTLP gateway." }));
       return;
     }
     const { exporter: metricExporter } = this.createEndpointAndExporter();

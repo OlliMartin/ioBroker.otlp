@@ -1,8 +1,21 @@
 {
   "common": {
     "name": "otlp",
-    "version": "0.0.4",
+    "version": "0.1.0",
     "news": {
+      "0.1.0": {
+        "en": "Add missing layout column definitions to custom settings UI\nRemove unnecessary `noTranslation` flags\nRemove `.stop()` call on invalid configuration",
+        "de": "Fügen Sie fehlende Layoutspaltendefinitionen zu benutzerdefinierten Einstellungen UI hinzu\nEntfernen Sie unnötige `noTranslation` Flaggen\nEntfernen `.stop()` auf ungültige Konfiguration",
+        "ru": "Добавить недостающие определения колонок макета в пользовательские настройки UI\nУдалите ненужные флаги «без перевода»\nУдалить «.stop()» Вызов недействительной конфигурации",
+        "pt": "Adicionar as definições da coluna de disposição em falta à interface de configuração personalizada\nRemover bandeiras desnecessárias de `noTranslation'\nRemover `.stop()` chamada na configuração inválida",
+        "nl": "Ontbrekende kolomdefinities toevoegen aan aangepaste instellingen UI\nVerwijder onnodige Vertaalvlaggen\nVerwijderen aanroep bij ongeldige configuratie",
+        "fr": "Ajouter les définitions manquantes des colonnes de mise en page à l'interface utilisateur personnalisée\nSupprimer les drapeaux inutiles \"non traduction\"\nSupprimer `.stop()` appel à la configuration non valide",
+        "it": "Aggiungi definizioni della colonna di layout mancanti alle impostazioni personalizzate UI\nRimuovere non necessari `noTranslation` flags\nRimuovere `.stop()` chiamata su configurazione non valida",
+        "es": "Añadir definiciones de la columna de diseño perdido a la configuración personalizada UI\nEliminar las banderas innecesarias de la noTraducción\nRemove `.stop()` llamada configuración inválida",
+        "pl": "Dodaj brakujące definicje kolumn układu do ustawień użytkownika\nUsuń niepotrzebne flagi 'noTranslation'\nUsuń '.stop ()' wywołanie niepoprawnej konfiguracji",
+        "uk": "Додайте відсутні визначення стовпців для налаштування користувацького інтерфейсу\nВидалити непотрібні прапори `noTranslation`\nВидалити `.stop()` виклик на недійсній конфігурації",
+        "zh-cn": "在自定义设置中添加缺少的布局列定义 UI\n删除不必要的“ 无翻译” 旗帜\n删除`.stop()' 调用无效的配置"
+      },
       "0.0.4": {
         "en": "Implement connection test by exporting (empty) dummy metric and shutdown on error\nRecreate all meters on custom config change; Fixes alias renames only taking affect after adapter restart\nFix [issue #3](https://github.com/OlliMartin/ioBroker.otlp/issues/3) where configured headers would not be applied correctly to the respective exporter \nTranslate admin & custom UI (i18n)",
         "de": "Implementieren Sie Verbindungstest durch Exportieren (leer) Dummy Metrik und Abschaltung auf Fehler\nRufen Sie alle Meter auf benutzerdefinierte config ändern; Behebt Alias-Umbenennungen nur, nachdem Adapter neu gestartet\nFix [Ausgabe #3](https://github.com/OlliMartin/ioBroker.otlp/issues/3), bei dem konfigurierte Header nicht korrekt auf den jeweiligen Exporteur angewendet werden\nÜbersetzen admin & benutzerdefinierte UI (i18n)",
