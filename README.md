@@ -63,6 +63,12 @@ For example, Prometheus will replace dot withs underscores, so `my.metric` as al
 
 In addition to the `aliasId` a list of attributes, i.e. key-value pairs, may be specified for each exported value. 
 
+### Showcases
+
+Refer to the showcases below for practical examples:
+
+* [Prometheus & Grafana: Detect open windows](./docs/showcase.prom-graf.md)
+
 ## Changelog
 <!--
     Placeholder for the next version (at the beginning of the line):
