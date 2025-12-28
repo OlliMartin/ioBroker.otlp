@@ -1,5 +1,26 @@
 {
-    "otlp adapter settings": "Ajustes del adaptador para otlp",
+    "A key-value list of headers to add to each request. This is how authentication may be configured": "Una lista de valores clave de encabezados para agregar a cada solicitud. Así es como se puede configurar la autenticación",
+    "A key-value list of resource attributes to globally populate": "Una lista de valores clave de atributos de recursos para completar globalmente",
+    "Attributes": "Atributos",
+    "Attributes to attach to this data-point's metric": "Atributos para adjuntar a la métrica de este punto de datos",
+    "Headers": "Encabezados",
+    "Host": "Anfitrión",
+    "Key": "Llave",
+    "Meter Name": "Nombre del medidor",
+    "OTLP Exporter Settings": "Configuración del exportador OTLP",
+    "Open Telemetry Protocol": "Protocolo de telemetría abierto",
+    "Overwrites the name of the metric to export": "Sobrescribe el nombre de la métrica a exportar.",
+    "Port": "Puerto",
+    "Protocol": "Protocolo",
+    "Resource Attributes": "Atributos de recursos",
+    "The hostname of the target server/otelcol gateway": "El nombre de host del servidor de destino/puerta de enlace de otelcol",
+    "The name of the create SDK meter. Usually this is only SDK internal": "El nombre del medidor SDK de creación. Por lo general, esto es solo interno del SDK.",
+    "The port of the otelcol gateway. Usually 4317 (gRPC) or 4318 (http)": "El puerto de la puerta de enlace de otelcol. Generalmente 4317 (gRPC) o 4318 (http)",
+    "The protocol of the server (http or https). This is not the open telemetry protocol!": "El protocolo del servidor (http o https). ¡Este no es el protocolo de telemetría abierto!",
+    "The protocol used to send telemetry data/metrics (gRPC or http (protobuf))": "El protocolo utilizado para enviar datos/métricas de telemetría (gRPC o http (protobuf))",
+    "Value": "Valor",
+    "aliasId": "ID de alias",
     "option1": "opción1",
-    "option2": "opción2"
+    "option2": "opción2",
+    "otlp adapter settings": "Ajustes del adaptador para otlp"
 }

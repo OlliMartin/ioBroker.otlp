@@ -1,5 +1,26 @@
 {
-    "otlp adapter settings": "Paramètres d'adaptateur pour otlp",
+    "A key-value list of headers to add to each request. This is how authentication may be configured": "Une liste clé-valeur d’en-têtes à ajouter à chaque requête. Voici comment l'authentification peut être configurée",
+    "A key-value list of resource attributes to globally populate": "Une liste de valeurs-clés d'attributs de ressources à remplir globalement",
+    "Attributes": "Attributs",
+    "Attributes to attach to this data-point's metric": "Attributs à attacher à la métrique de ce point de données",
+    "Headers": "En-têtes",
+    "Host": "Hôte",
+    "Key": "Clé",
+    "Meter Name": "Nom du compteur",
+    "OTLP Exporter Settings": "Paramètres de l'exportateur OTLP",
+    "Open Telemetry Protocol": "Protocole de télémétrie ouvert",
+    "Overwrites the name of the metric to export": "Remplace le nom de la métrique à exporter",
+    "Port": "Port",
+    "Protocol": "Protocole",
+    "Resource Attributes": "Attributs des ressources",
+    "The hostname of the target server/otelcol gateway": "Le nom d'hôte du serveur cible/passerelle otelcol",
+    "The name of the create SDK meter. Usually this is only SDK internal": "Le nom du compteur de création du SDK. Habituellement, il s'agit uniquement du SDK interne",
+    "The port of the otelcol gateway. Usually 4317 (gRPC) or 4318 (http)": "Le port de la passerelle hôtelcol. Généralement 4317 (gRPC) ou 4318 (http)",
+    "The protocol of the server (http or https). This is not the open telemetry protocol!": "Le protocole du serveur (http ou https). Ce n’est pas le protocole de télémétrie ouvert !",
+    "The protocol used to send telemetry data/metrics (gRPC or http (protobuf))": "Le protocole utilisé pour envoyer des données/métriques de télémétrie (gRPC ou http (protobuf))",
+    "Value": "Valeur",
+    "aliasId": "Identifiant d'alias",
     "option1": "option1",
-    "option2": "option2"
+    "option2": "option2",
+    "otlp adapter settings": "Paramètres d'adaptateur pour otlp"
 }

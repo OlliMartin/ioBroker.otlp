@@ -1,5 +1,26 @@
 {
-    "otlp adapter settings": "Configurações do adaptador para otlp",
+    "A key-value list of headers to add to each request. This is how authentication may be configured": "Uma lista de valores-chave de cabeçalhos a serem adicionados a cada solicitação. É assim que a autenticação pode ser configurada",
+    "A key-value list of resource attributes to globally populate": "Uma lista de valores-chave de atributos de recursos para preencher globalmente",
+    "Attributes": "Atributos",
+    "Attributes to attach to this data-point's metric": "Atributos a serem anexados à métrica deste ponto de dados",
+    "Headers": "Cabeçalhos",
+    "Host": "Hospedar",
+    "Key": "Chave",
+    "Meter Name": "Nome do Medidor",
+    "OTLP Exporter Settings": "Configurações do exportador OTLP",
+    "Open Telemetry Protocol": "Protocolo de telemetria aberto",
+    "Overwrites the name of the metric to export": "Substitui o nome da métrica a ser exportada",
+    "Port": "Porta",
+    "Protocol": "Protocolo",
+    "Resource Attributes": "Atributos de recursos",
+    "The hostname of the target server/otelcol gateway": "O nome do host do servidor de destino/gateway otelcol",
+    "The name of the create SDK meter. Usually this is only SDK internal": "O nome do medidor de criação do SDK. Geralmente isso é apenas interno do SDK",
+    "The port of the otelcol gateway. Usually 4317 (gRPC) or 4318 (http)": "A porta do gateway otelcol. Geralmente 4317 (gRPC) ou 4318 (http)",
+    "The protocol of the server (http or https). This is not the open telemetry protocol!": "O protocolo do servidor (http ou https). Este não é o protocolo de telemetria aberto!",
+    "The protocol used to send telemetry data/metrics (gRPC or http (protobuf))": "O protocolo usado para enviar dados/métricas de telemetria (gRPC ou http (protobuf))",
+    "Value": "Valor",
+    "aliasId": "ID do alias",
     "option1": "opção1",
-    "option2": "opção2"
+    "option2": "opção2",
+    "otlp adapter settings": "Configurações do adaptador para otlp"
 }

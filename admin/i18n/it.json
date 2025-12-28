@@ -1,5 +1,26 @@
 {
-    "otlp adapter settings": "Impostazioni dell'adattatore per otlp",
+    "A key-value list of headers to add to each request. This is how authentication may be configured": "Un elenco di valori-chiave di intestazioni da aggiungere a ciascuna richiesta. Ecco come può essere configurata l'autenticazione",
+    "A key-value list of resource attributes to globally populate": "Un elenco di valori-chiave di attributi di risorsa da compilare a livello globale",
+    "Attributes": "Attributi",
+    "Attributes to attach to this data-point's metric": "Attributi da allegare alla metrica di questo punto dati",
+    "Headers": "Intestazioni",
+    "Host": "Ospite",
+    "Key": "Chiave",
+    "Meter Name": "Nome del contatore",
+    "OTLP Exporter Settings": "Impostazioni dell'esportatore OTLP",
+    "Open Telemetry Protocol": "Apri protocollo di telemetria",
+    "Overwrites the name of the metric to export": "Sovrascrive il nome della metrica da esportare",
+    "Port": "Porta",
+    "Protocol": "Protocollo",
+    "Resource Attributes": "Attributi delle risorse",
+    "The hostname of the target server/otelcol gateway": "Il nome host del server/gateway otelcol di destinazione",
+    "The name of the create SDK meter. Usually this is only SDK internal": "Il nome del misuratore SDK creato. Di solito si tratta solo dell'SDK interno",
+    "The port of the otelcol gateway. Usually 4317 (gRPC) or 4318 (http)": "Il porto del gateway otelcol. Di solito 4317 (gRPC) o 4318 (http)",
+    "The protocol of the server (http or https). This is not the open telemetry protocol!": "Il protocollo del server (http o https). Questo non è il protocollo di telemetria aperto!",
+    "The protocol used to send telemetry data/metrics (gRPC or http (protobuf))": "Il protocollo utilizzato per inviare dati/metriche di telemetria (gRPC o http (protobuf))",
+    "Value": "Valore",
+    "aliasId": "ID alias",
     "option1": "opzione1",
-    "option2": "opzione2"
+    "option2": "opzione2",
+    "otlp adapter settings": "Impostazioni dell'adattatore per otlp"
 }

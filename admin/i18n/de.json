@@ -1,5 +1,26 @@
 {
-    "otlp adapter settings": "Adaptereinstellungen für otlp",
+    "A key-value list of headers to add to each request. This is how authentication may be configured": "Eine Schlüsselwertliste mit Headern, die jeder Anfrage hinzugefügt werden sollen. So kann die Authentifizierung konfiguriert werden",
+    "A key-value list of resource attributes to globally populate": "Eine Schlüsselwertliste von Ressourcenattributen, die global gefüllt werden sollen",
+    "Attributes": "Attribute",
+    "Attributes to attach to this data-point's metric": "Attribute, die der Metrik dieses Datenpunkts zugeordnet werden sollen",
+    "Headers": "Überschriften",
+    "Host": "Gastgeber",
+    "Key": "Schlüssel",
+    "Meter Name": "Zählername",
+    "OTLP Exporter Settings": "OTLP-Exporter-Einstellungen",
+    "Open Telemetry Protocol": "OpenTelemetrie Protokoll",
+    "Overwrites the name of the metric to export": "Überschreibt den Namen der zu exportierenden Metrik",
+    "Port": "Port",
+    "Protocol": "Protokoll",
+    "Resource Attributes": "Ressourcenattribute",
+    "The hostname of the target server/otelcol gateway": "Der Hostname des Zielservers/Otelcol-Gateways",
+    "The name of the create SDK meter. Usually this is only SDK internal": "Der Name des erstellten SDK-Messgeräts. Normalerweise ist dies nur SDK-intern",
+    "The port of the otelcol gateway. Usually 4317 (gRPC) or 4318 (http)": "Der Port des otelcol-Gateways. Normalerweise 4317 (gRPC) oder 4318 (http)",
+    "The protocol of the server (http or https). This is not the open telemetry protocol!": "Das Protokoll des Servers (http oder https). Dies ist nicht das offene Telemetrieprotokoll!",
+    "The protocol used to send telemetry data/metrics (gRPC or http (protobuf))": "Das zum Senden von Telemetriedaten/Metriken verwendete Protokoll (gRPC oder http (protobuf))",
+    "Value": "Wert",
+    "aliasId": "Alias-ID",
     "option1": "Option1",
-    "option2": "Option2"
+    "option2": "Option2",
+    "otlp adapter settings": "Adaptereinstellungen für otlp"
 }

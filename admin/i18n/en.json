@@ -1,5 +1,27 @@
 {
-    "otlp adapter settings": "Adapter settings for otlp",
-    "option1": "option1",
-    "option2": "option2"
+    "OTLP Exporter Settings": "OTLP Exporter Settings",
+    "Protocol": "Protocol",
+    "Host": "Host",
+    "Port": "Port",
+    "Open Telemetry Protocol": "Open Telemetry Protocol",
+    "Meter Name": "Meter Name",
+    "Headers": "Headers",
+    "Resource Attributes": "Resource Attributes",
+    
+    "Key": "Key",
+    "Value": "Value",
+    
+    "otlp adapter settings": "Adapter settings for OTLP",
+    "The protocol of the server (http or https). This is not the open telemetry protocol!": "The protocol of the server (http or https). This is not the open telemetry protocol!",
+    "The hostname of the target server/otelcol gateway": "The hostname of the target server/otelcol gateway",
+    "The port of the otelcol gateway. Usually 4317 (gRPC) or 4318 (http)": "The port of the otelcol gateway. Usually 4317 (gRPC) or 4318 (http)",
+    "The protocol used to send telemetry data/metrics (gRPC or http (protobuf))": "The protocol used to send telemetry data/metrics (gRPC or http (protobuf))",
+    "The name of the create SDK meter. Usually this is only SDK internal": "The name of the create SDK meter. Usually this is only SDK internal",
+    "A key-value list of headers to add to each request. This is how authentication may be configured": "A key-value list of headers to add to each request. This is how authentication may be configured",
+    "A key-value list of resource attributes to globally populate": "A key-value list of resource attributes to globally populate",
+    
+    "aliasId": "Alias ID",
+    "Attributes": "Attributes",
+    "Overwrites the name of the metric to export": "Overwrites the name of the metric to export",
+    "Attributes to attach to this data-point's metric": "Attributes to attach to this data-point's metric"
 }

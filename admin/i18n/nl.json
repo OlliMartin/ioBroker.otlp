@@ -1,5 +1,26 @@
 {
-    "otlp adapter settings": "Adapterinstellingen voor otlp",
+    "A key-value list of headers to add to each request. This is how authentication may be configured": "Een sleutelwaardelijst met headers die aan elk verzoek moeten worden toegevoegd. Dit is hoe authenticatie kan worden geconfigureerd",
+    "A key-value list of resource attributes to globally populate": "Een sleutelwaardelijst met resourcekenmerken die globaal moeten worden ingevuld",
+    "Attributes": "Kenmerken",
+    "Attributes to attach to this data-point's metric": "Attributen die aan de metriek van dit datapunt moeten worden gekoppeld",
+    "Headers": "Kopteksten",
+    "Host": "Gastheer",
+    "Key": "Sleutel",
+    "Meter Name": "Meternaam",
+    "OTLP Exporter Settings": "OTLP-exporteurinstellingen",
+    "Open Telemetry Protocol": "Open het telemetrieprotocol",
+    "Overwrites the name of the metric to export": "Overschrijft de naam van de metriek die moet worden geëxporteerd",
+    "Port": "Haven",
+    "Protocol": "Protocol",
+    "Resource Attributes": "Resourcekenmerken",
+    "The hostname of the target server/otelcol gateway": "De hostnaam van de doelserver/otelcol-gateway",
+    "The name of the create SDK meter. Usually this is only SDK internal": "De naam van de SDK-meter voor het maken ervan. Meestal is dit alleen SDK intern",
+    "The port of the otelcol gateway. Usually 4317 (gRPC) or 4318 (http)": "De poort van de otelcol-gateway. Meestal 4317 (gRPC) of 4318 (http)",
+    "The protocol of the server (http or https). This is not the open telemetry protocol!": "Het protocol van de server (http of https). Dit is niet het open telemetrieprotocol!",
+    "The protocol used to send telemetry data/metrics (gRPC or http (protobuf))": "Het protocol dat wordt gebruikt om telemetriegegevens/statistieken te verzenden (gRPC of http (protobuf))",
+    "Value": "Waarde",
+    "aliasId": "Alias-ID",
     "option1": "optie1",
-    "option2": "optie2"
+    "option2": "optie2",
+    "otlp adapter settings": "Adapterinstellingen voor otlp"
 }

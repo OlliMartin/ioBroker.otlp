@@ -1,5 +1,26 @@
 {
-    "otlp adapter settings": "Ustawienia adaptera dla otlp",
+    "A key-value list of headers to add to each request. This is how authentication may be configured": "Lista klucz-wartość nagłówków do dodania do każdego żądania. W ten sposób można skonfigurować uwierzytelnianie",
+    "A key-value list of resource attributes to globally populate": "Lista klucz-wartość atrybutów zasobów do globalnego wypełnienia",
+    "Attributes": "Atrybuty",
+    "Attributes to attach to this data-point's metric": "Atrybuty, które należy dołączyć do metryki tego punktu danych",
+    "Headers": "Nagłówki",
+    "Host": "Gospodarz",
+    "Key": "Klawisz",
+    "Meter Name": "Nazwa licznika",
+    "OTLP Exporter Settings": "Ustawienia eksportera OTLP",
+    "Open Telemetry Protocol": "Otwórz protokół telemetryczny",
+    "Overwrites the name of the metric to export": "Zastępuje nazwę metryki do wyeksportowania",
+    "Port": "Port",
+    "Protocol": "Protokół",
+    "Resource Attributes": "Atrybuty zasobów",
+    "The hostname of the target server/otelcol gateway": "Nazwa hosta serwera docelowego/bramy Otelcol",
+    "The name of the create SDK meter. Usually this is only SDK internal": "Nazwa licznika tworzenia zestawu SDK. Zwykle jest to tylko wewnętrzne narzędzie SDK",
+    "The port of the otelcol gateway. Usually 4317 (gRPC) or 4318 (http)": "Port bramy otelcol. Zwykle 4317 (gRPC) lub 4318 (http)",
+    "The protocol of the server (http or https). This is not the open telemetry protocol!": "Protokół serwera (http lub https). To nie jest otwarty protokół telemetryczny!",
+    "The protocol used to send telemetry data/metrics (gRPC or http (protobuf))": "Protokół używany do wysyłania danych telemetrycznych/metryki (gRPC lub http (protobuf))",
+    "Value": "Wartość",
+    "aliasId": "Identyfikator aliasu",
     "option1": "opcja 1",
-    "option2": "opcja 2"
+    "option2": "opcja 2",
+    "otlp adapter settings": "Ustawienia adaptera dla otlp"
 }

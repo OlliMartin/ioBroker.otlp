@@ -1,5 +1,26 @@
 {
-    "otlp adapter settings": "Налаштування адаптера для otlp",
+    "A key-value list of headers to add to each request. This is how authentication may be configured": "Список заголовків ключ-значення для додавання до кожного запиту. Ось як можна налаштувати автентифікацію",
+    "A key-value list of resource attributes to globally populate": "Список ключ-значення атрибутів ресурсу для глобального заповнення",
+    "Attributes": "Атрибути",
+    "Attributes to attach to this data-point's metric": "Атрибути, які потрібно додати до метрики цієї точки даних",
+    "Headers": "Заголовки",
+    "Host": "Хост",
+    "Key": "ключ",
+    "Meter Name": "Назва лічильника",
+    "OTLP Exporter Settings": "Параметри експортера OTLP",
+    "Open Telemetry Protocol": "Відкрити телеметричний протокол",
+    "Overwrites the name of the metric to export": "Перезаписує назву метрики для експорту",
+    "Port": "Порт",
+    "Protocol": "Протокол",
+    "Resource Attributes": "Атрибути ресурсу",
+    "The hostname of the target server/otelcol gateway": "Ім’я хоста цільового сервера/шлюзу otelcol",
+    "The name of the create SDK meter. Usually this is only SDK internal": "Ім'я створеного вимірювача SDK. Зазвичай це лише внутрішні SDK",
+    "The port of the otelcol gateway. Usually 4317 (gRPC) or 4318 (http)": "Порт шлюзу otelcol. Зазвичай 4317 (gRPC) або 4318 (http)",
+    "The protocol of the server (http or https). This is not the open telemetry protocol!": "Протокол сервера (http або https). Це не відкритий протокол телеметрії!",
+    "The protocol used to send telemetry data/metrics (gRPC or http (protobuf))": "Протокол, який використовується для надсилання телеметричних даних/метрик (gRPC або http (protobuf))",
+    "Value": "Значення",
+    "aliasId": "ID псевдоніма",
     "option1": "варіант1",
-    "option2": "варіант2"
+    "option2": "варіант2",
+    "otlp adapter settings": "Налаштування адаптера для otlp"
 }

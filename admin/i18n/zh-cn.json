@@ -1,5 +1,26 @@
 {
-    "otlp adapter settings": "otlp的适配器设置",
+    "A key-value list of headers to add to each request. This is how authentication may be configured": "要添加到每个请求的标头的键值列表。这是身份验证的配置方式",
+    "A key-value list of resource attributes to globally populate": "要全局填充的资源属性的键值列表",
+    "Attributes": "属性",
+    "Attributes to attach to this data-point's metric": "附加到该数据点指标的属性",
+    "Headers": "标头",
+    "Host": "主持人",
+    "Key": "钥匙",
+    "Meter Name": "仪表名称",
+    "OTLP Exporter Settings": "OTLP 导出器设置",
+    "Open Telemetry Protocol": "开放遥测协议",
+    "Overwrites the name of the metric to export": "覆盖要导出的指标名称",
+    "Port": "港口",
+    "Protocol": "协议",
+    "Resource Attributes": "资源属性",
+    "The hostname of the target server/otelcol gateway": "目标服务器/otelcol 网关的主机名",
+    "The name of the create SDK meter. Usually this is only SDK internal": "创建SDK Meter的名称。通常这只是 SDK 内部的",
+    "The port of the otelcol gateway. Usually 4317 (gRPC) or 4318 (http)": "otelcol 网关的端口。通常为 4317 (gRPC) 或 4318 (http)",
+    "The protocol of the server (http or https). This is not the open telemetry protocol!": "服务器的协议（http 或 https）。这不是开放的遥测协议！",
+    "The protocol used to send telemetry data/metrics (gRPC or http (protobuf))": "用于发送遥测数据/指标的协议（gRPC 或 http (protobuf)）",
+    "Value": "价值",
+    "aliasId": "别名ID",
     "option1": "选项1",
-    "option2": "选项2"
+    "option2": "选项2",
+    "otlp adapter settings": "otlp的适配器设置"
 }

@@ -333,6 +333,7 @@ class Otlp extends utils.Adapter {
         const startMs = performance.now();
         await this._meterProvider?.forceFlush();
         await this._meterProvider?.shutdown();
+        this._meterProvider = null;
 
         const { exporter: nextExporter } = this.createEndpointAndExporter();
 

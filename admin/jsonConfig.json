@@ -86,17 +86,13 @@
                             "type": "text",
                             "width": "50%",
                             "attr": "key",
-                            "title": {
-                                "en": "Key"
-                            }
+                            "title": "Key"
                         },
                         {
                             "type": "text",
                             "width": "50%",
                             "attr": "value",
-                            "title": {
-                                "en": "Value"
-                            }
+                            "title": "Value"
                         }
                     ],
                     "sm": 12,
@@ -116,17 +112,13 @@
                             "type": "text",
                             "width": "50%",
                             "attr": "key",
-                            "title": {
-                                "en": "Key"
-                            }
+                            "title": "Key"
                         },
                         {
                             "type": "text",
                             "width": "50%",
                             "attr": "value",
-                            "title": {
-                                "en": "Value"
-                            }
+                            "title": "Value"
                         }
                     ],
                     "sm": 12,
