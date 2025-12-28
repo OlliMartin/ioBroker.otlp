@@ -3,7 +3,7 @@ if a window is detected  open for longer than `X` minutes.
 
 ## High Level Overview
 
-:::mermaid
+```mermaid
 flowchart
     
 iobOtlp[[ioBroker OTLP Adapter]]
@@ -24,7 +24,7 @@ grafana <-->|Tracks| prom
 grafana -->|Push via Recording Rule| prom
 
 grafana -->|Notification: Window Open > X Minutes| telegram
-:::
+```
 
 I have a few Matter-compatible window sensors which are connected to ioBroker. Each datapoint/state generates a timeseries 
 for the same metric name (`contact-sensor-open`):
