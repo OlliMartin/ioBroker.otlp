@@ -23,7 +23,7 @@
  */
 
 import type { Gauge, Meter as IMeter } from '@opentelemetry/api';
-import type { PushMetricExporter } from '@opentelemetry/sdk-metrics';
+import type { PushMetricExporter, ResourceMetrics } from '@opentelemetry/sdk-metrics';
 import { MeterProvider, PeriodicExportingMetricReader } from '@opentelemetry/sdk-metrics';
 import type { OTLPMetricExporterOptions } from '@opentelemetry/exporter-metrics-otlp-http';
 import { OTLPMetricExporter as OTLPHttpExporter } from '@opentelemetry/exporter-metrics-otlp-http';
@@ -51,9 +51,7 @@ function parseNumberWithNull(value: any): number | null {
     return null;
 }
 
-function transformAttributes(
-    attributesFromConfig: { key: string; value: string }[] | undefined,
-): Record<string, string> {
+function iobTable2Record(attributesFromConfig: { key: string; value: string }[] | undefined): Record<string, string> {
     if (!attributesFromConfig) {
         return {};
     }
@@ -67,6 +65,44 @@ interface SavedOtlpCustomConfig extends OtlpCustomConfigTyped {
     state: ioBroker.State | null | undefined;
     skipped: ioBroker.State | null | undefined;
     lastLogTime?: number;
+}
+
+function createEndpointAndExporter(
+    headers: {
+        key: string;
+        value: string;
+    }[],
+    otlProtocol: 'grpc' | 'http',
+    protocol: 'http' | 'https',
+    host: string,
+    port: number | string,
+): { endpoint: string | null; exporter: PushMetricExporter | null } {
+    let otlpEndpoint: string | null = null;
+    let metricExporter: PushMetricExporter | null = null;
+
+    const headerRecord = iobTable2Record(headers);
+
+    if (otlProtocol === 'http') {
+        otlpEndpoint = `${protocol}://${host}:${port}/v1/metrics`;
+
+        const collectorOptions: OTLPMetricExporterOptions = {
+            url: otlpEndpoint,
+            headers: headerRecord,
+        };
+        metricExporter = new OTLPHttpExporter(collectorOptions);
+    }
+
+    if (otlProtocol === 'grpc') {
+        otlpEndpoint = `${protocol}://${host}:${port}/otlp`;
+
+        const collectorOptions: OTLPMetricExporterOptions = {
+            url: otlpEndpoint,
+            headers: headerRecord,
+        };
+        metricExporter = new OTLPGrpcExporter(collectorOptions);
+    }
+
+    return { endpoint: otlpEndpoint, exporter: metricExporter };
 }
 
 class Otlp extends utils.Adapter {
@@ -111,44 +147,33 @@ class Otlp extends utils.Adapter {
             this.log.error(
                 'At least one required property was not set. Cannot start. Please adjust the configuration.',
             );
+            await this.stop?.call({
+                exitCode: 1,
+                reason: 'Incomplete configuration. Please adjust the configuration.',
+            });
             return;
         }
 
         const { headers, resourceAttributes } = this.config;
 
-        let otlpEndpoint: string | null = null;
-        let metricExporter: PushMetricExporter | null = null;
+        const connectionValid = await this.testConnectionAsync(headers, otlProtocol, protocol, host, port);
+        this.setConnected(connectionValid);
 
-        if (otlProtocol === 'http') {
-            otlpEndpoint = `${protocol}://${host}:${port}/v1/metrics`;
-
-            const collectorOptions: OTLPMetricExporterOptions = {
-                url: otlpEndpoint,
-                headers,
-            };
-            metricExporter = new OTLPHttpExporter(collectorOptions);
-        }
-
-        if (otlProtocol === 'grpc') {
-            otlpEndpoint = `${protocol}://${host}:${port}/otlp`;
-
-            const collectorOptions: OTLPMetricExporterOptions = {
-                url: otlpEndpoint,
-                headers,
-            };
-            metricExporter = new OTLPGrpcExporter(collectorOptions);
-        }
-
-        if (!otlpEndpoint || !metricExporter) {
-            this.log.error('Could not create metric exporter. Cannot continue. Stopping.');
+        if (!connectionValid) {
+            this.log.info('Provided connection info is invalid. Please adjust the configuration.');
+            await this.stop?.call({ exitCode: 1, reason: 'Invalid configuration. Cannot connect to OTLP gateway.' });
             return;
         }
 
-        this.log.info(`Connecting to OTLP endpoint: ${otlpEndpoint}`);
+        const { exporter: metricExporter } = createEndpointAndExporter(headers, otlProtocol, protocol, host, port);
+
+        if (isNullOrUndefined(metricExporter)) {
+            return;
+        }
 
         const resource =
             !!resourceAttributes && Object.keys(resourceAttributes).length > 0
-                ? resourceFromAttributes(transformAttributes(resourceAttributes))
+                ? resourceFromAttributes(iobTable2Record(resourceAttributes))
                 : emptyResource();
 
         this._meterProvider = new MeterProvider({
@@ -164,7 +189,6 @@ class Otlp extends utils.Adapter {
         const { meterName } = this.config;
 
         this._meter = this._meterProvider.getMeter(meterName ?? this.namespace, undefined, {});
-        this.setConnected(true);
 
         await this.loadCustomEntitiesAsync();
 
@@ -172,6 +196,58 @@ class Otlp extends utils.Adapter {
 
         this.subscribeToStates();
         this.subscribeForeignObjects('*');
+    }
+
+    private testConnectionAsync(
+        headers: {
+            key: string;
+            value: string;
+        }[],
+        otlProtocol: 'grpc' | 'http',
+        protocol: 'http' | 'https',
+        host: string,
+        port: number | string,
+    ): Promise<boolean> {
+        const { endpoint: otlpEndpoint, exporter: metricExporter } = createEndpointAndExporter(
+            headers,
+            otlProtocol,
+            protocol,
+            host,
+            port,
+        );
+
+        if (!otlpEndpoint || !metricExporter) {
+            this.log.error('Could not create metric exporter. Cannot continue. Stopping.');
+            return Promise.resolve(false);
+        }
+
+        this.log.info(`Connecting to OTLP endpoint: ${otlpEndpoint}`);
+
+        const testPayload: ResourceMetrics = {
+            resource: emptyResource(),
+            scopeMetrics: [],
+        };
+
+        return new Promise((resolve, _) => {
+            metricExporter.export(testPayload, async result => {
+                await metricExporter.shutdown();
+
+                if (result.error === undefined) {
+                    resolve(true);
+                    return;
+                }
+
+                this.log.warn(
+                    `An error occurred trying to connect to the provided open telemetry gateway: ${result.error.message}`,
+                );
+
+                if (result.error.stack !== undefined && result.error.stack.length > 0) {
+                    this.log.debug(result.error.stack);
+                }
+
+                resolve(false);
+            });
+        });
     }
 
     private subscribeToStates(): void {
@@ -274,6 +350,8 @@ class Otlp extends utils.Adapter {
                 await this._meterProvider.forceFlush();
                 await this._meterProvider.shutdown();
             }
+
+            this.setConnected(false);
         } finally {
             callback();
         }
@@ -404,7 +482,7 @@ class Otlp extends utils.Adapter {
             return;
         }
 
-        instrument.record(otlpValue, transformAttributes(dataPointCfg?.attributes));
+        instrument.record(otlpValue, iobTable2Record(dataPointCfg?.attributes));
     }
 
     private transformStateValue(iobValue: ioBroker.StateValue): number | null {

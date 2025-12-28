@@ -42,11 +42,33 @@ function parseNumberWithNull(value) {
   }
   return null;
 }
-function transformAttributes(attributesFromConfig) {
+function iobTable2Record(attributesFromConfig) {
   if (!attributesFromConfig) {
     return {};
   }
   return attributesFromConfig.reduce((prev, tuple) => ({ ...prev, [tuple.key]: tuple.value }), {});
+}
+function createEndpointAndExporter(headers, otlProtocol, protocol, host, port) {
+  let otlpEndpoint = null;
+  let metricExporter = null;
+  const headerRecord = iobTable2Record(headers);
+  if (otlProtocol === "http") {
+    otlpEndpoint = `${protocol}://${host}:${port}/v1/metrics`;
+    const collectorOptions = {
+      url: otlpEndpoint,
+      headers: headerRecord
+    };
+    metricExporter = new import_exporter_metrics_otlp_http.OTLPMetricExporter(collectorOptions);
+  }
+  if (otlProtocol === "grpc") {
+    otlpEndpoint = `${protocol}://${host}:${port}/otlp`;
+    const collectorOptions = {
+      url: otlpEndpoint,
+      headers: headerRecord
+    };
+    metricExporter = new import_exporter_metrics_otlp_grpc.OTLPMetricExporter(collectorOptions);
+  }
+  return { endpoint: otlpEndpoint, exporter: metricExporter };
 }
 class Otlp extends utils.Adapter {
   _subscribeAll = false;
@@ -67,39 +89,32 @@ class Otlp extends utils.Adapter {
     this.on("unload", this.onUnload.bind(this));
   }
   async onReady() {
+    var _a, _b;
     this.setConnected(false);
     const { protocol, otlProtocol, host, port } = this.config;
     if (isNullOrUndefined(protocol) || isNullOrUndefined(otlProtocol) || isNullOrUndefined(host) || isNullOrUndefined(port)) {
       this.log.error(
         "At least one required property was not set. Cannot start. Please adjust the configuration."
       );
+      await ((_a = this.stop) == null ? void 0 : _a.call({
+        exitCode: 1,
+        reason: "Incomplete configuration. Please adjust the configuration."
+      }));
       return;
     }
     const { headers, resourceAttributes } = this.config;
-    let otlpEndpoint = null;
-    let metricExporter = null;
-    if (otlProtocol === "http") {
-      otlpEndpoint = `${protocol}://${host}:${port}/v1/metrics`;
-      const collectorOptions = {
-        url: otlpEndpoint,
-        headers
-      };
-      metricExporter = new import_exporter_metrics_otlp_http.OTLPMetricExporter(collectorOptions);
-    }
-    if (otlProtocol === "grpc") {
-      otlpEndpoint = `${protocol}://${host}:${port}/otlp`;
-      const collectorOptions = {
-        url: otlpEndpoint,
-        headers
-      };
-      metricExporter = new import_exporter_metrics_otlp_grpc.OTLPMetricExporter(collectorOptions);
-    }
-    if (!otlpEndpoint || !metricExporter) {
-      this.log.error("Could not create metric exporter. Cannot continue. Stopping.");
+    const connectionValid = await this.testConnectionAsync(headers, otlProtocol, protocol, host, port);
+    this.setConnected(connectionValid);
+    if (!connectionValid) {
+      this.log.info("Provided connection info is invalid. Please adjust the configuration.");
+      await ((_b = this.stop) == null ? void 0 : _b.call({ exitCode: 1, reason: "Invalid configuration. Cannot connect to OTLP gateway." }));
       return;
     }
-    this.log.info(`Connecting to OTLP endpoint: ${otlpEndpoint}`);
-    const resource = !!resourceAttributes && Object.keys(resourceAttributes).length > 0 ? (0, import_resources.resourceFromAttributes)(transformAttributes(resourceAttributes)) : (0, import_resources.emptyResource)();
+    const { exporter: metricExporter } = createEndpointAndExporter(headers, otlProtocol, protocol, host, port);
+    if (isNullOrUndefined(metricExporter)) {
+      return;
+    }
+    const resource = !!resourceAttributes && Object.keys(resourceAttributes).length > 0 ? (0, import_resources.resourceFromAttributes)(iobTable2Record(resourceAttributes)) : (0, import_resources.emptyResource)();
     this._meterProvider = new import_sdk_metrics.MeterProvider({
       readers: [
         new import_sdk_metrics.PeriodicExportingMetricReader({
@@ -111,11 +126,44 @@ class Otlp extends utils.Adapter {
     });
     const { meterName } = this.config;
     this._meter = this._meterProvider.getMeter(meterName != null ? meterName : this.namespace, void 0, {});
-    this.setConnected(true);
     await this.loadCustomEntitiesAsync();
     this.createMetricInstruments();
     this.subscribeToStates();
     this.subscribeForeignObjects("*");
+  }
+  testConnectionAsync(headers, otlProtocol, protocol, host, port) {
+    const { endpoint: otlpEndpoint, exporter: metricExporter } = createEndpointAndExporter(
+      headers,
+      otlProtocol,
+      protocol,
+      host,
+      port
+    );
+    if (!otlpEndpoint || !metricExporter) {
+      this.log.error("Could not create metric exporter. Cannot continue. Stopping.");
+      return Promise.resolve(false);
+    }
+    this.log.info(`Connecting to OTLP endpoint: ${otlpEndpoint}`);
+    const testPayload = {
+      resource: (0, import_resources.emptyResource)(),
+      scopeMetrics: []
+    };
+    return new Promise((resolve, _) => {
+      metricExporter.export(testPayload, async (result) => {
+        await metricExporter.shutdown();
+        if (result.error === void 0) {
+          resolve(true);
+          return;
+        }
+        this.log.warn(
+          `An error occurred trying to connect to the provided open telemetry gateway: ${result.error.message}`
+        );
+        if (result.error.stack !== void 0 && result.error.stack.length > 0) {
+          this.log.debug(result.error.stack);
+        }
+        resolve(false);
+      });
+    });
   }
   subscribeToStates() {
     if (Object.keys(this._trackedDataPoints).length < 20) {
@@ -195,6 +243,7 @@ class Otlp extends utils.Adapter {
         await this._meterProvider.forceFlush();
         await this._meterProvider.shutdown();
       }
+      this.setConnected(false);
     } finally {
       callback();
     }
@@ -290,7 +339,7 @@ class Otlp extends utils.Adapter {
     if (isNullOrUndefined(otlpValue)) {
       return;
     }
-    instrument.record(otlpValue, transformAttributes(dataPointCfg == null ? void 0 : dataPointCfg.attributes));
+    instrument.record(otlpValue, iobTable2Record(dataPointCfg == null ? void 0 : dataPointCfg.attributes));
   }
   transformStateValue(iobValue) {
     return parseNumberWithNull(iobValue);

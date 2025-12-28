@@ -92,7 +92,7 @@
   "native": {
     "host": "localhost",
     "protocol": "http",
-    "otlProtocol": "http",
+    "otlProtocol": "grpc",
     "meterName": "ioBroker.otlp",
     "port": 4317,
     "headers": [],

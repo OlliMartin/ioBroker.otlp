@@ -68,6 +68,10 @@ In addition to the `aliasId` a list of attributes, i.e. key-value pairs, may be 
     Placeholder for the next version (at the beginning of the line):
     ### **WORK IN PROGRESS**
 -->
+### **WORK IN PROGRESS**
+
+* (OlliMartin) Implement connection test by exporting (empty) dummy metric and shutdown on error
+
 ### 0.0.3 (2025-12-20)
 
 * (OlliMartin) Include MIT Copyright Notice from [ioBroker.influxdb](https://github.com/ioBroker/ioBroker.influxdb)

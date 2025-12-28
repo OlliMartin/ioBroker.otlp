@@ -41,7 +41,7 @@ export interface OtlpAdapterConfig {
     /**
      *
      */
-    headers: Record<string, string>;
+    headers: { key: string; value: string }[];
     /**
      *
      */
