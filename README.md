@@ -70,16 +70,13 @@ In addition to the `aliasId` a list of attributes, i.e. key-value pairs, may be 
 -->
 ### 0.1.0 (2025-12-28)
 
+* (OlliMartin) Implement connection test by exporting (empty) dummy metric and shutdown on error
+* (OlliMartin) Recreate all meters on custom config change; Fixes alias renames only taking affect after adapter restart
+* (OlliMartin) Fix [issue #3](https://github.com/OlliMartin/ioBroker.otlp/issues/3) where configured headers would not be applied correctly to the respective exporter
+* (OlliMartin) Translate admin & custom UI (i18n)
 * (OlliMartin) Add missing layout column definitions to custom settings UI
 * (OlliMartin) Remove unnecessary `noTranslation` flags
 * (OlliMartin) Remove `.stop()` call on invalid configuration
-
-### 0.0.4 (2025-12-28)
-
-* (OlliMartin) Implement connection test by exporting (empty) dummy metric and shutdown on error
-* (OlliMartin) Recreate all meters on custom config change; Fixes alias renames only taking affect after adapter restart
-* (OlliMartin) Fix [issue #3](https://github.com/OlliMartin/ioBroker.otlp/issues/3) where configured headers would not be applied correctly to the respective exporter 
-* (OlliMartin) Translate admin & custom UI (i18n)
 
 ### 0.0.3 (2025-12-20)
 
