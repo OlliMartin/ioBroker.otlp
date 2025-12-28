@@ -116,10 +116,7 @@ class Otlp extends utils.Adapter {
             this.log.error(
                 'At least one required property was not set. Cannot start. Please adjust the configuration.',
             );
-            await this.stop?.call({
-                exitCode: 1,
-                reason: 'Incomplete configuration. Please adjust the configuration.',
-            });
+
             return;
         }
         this._protocol = protocol;
@@ -134,7 +131,6 @@ class Otlp extends utils.Adapter {
 
         if (!connectionValid) {
             this.log.info('Provided connection info is invalid. Please adjust the configuration.');
-            await this.stop?.call({ exitCode: 1, reason: 'Invalid configuration. Cannot connect to OTLP gateway.' });
             return;
         }
 
