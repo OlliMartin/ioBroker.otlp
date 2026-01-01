@@ -119,7 +119,7 @@ Refer to the showcases below for practical examples:
 ## License
 MIT License
 
-Copyright (c) 2025 OlliMartin <oss@ollimart.in>
+Copyright (c) 2026 OlliMartin <oss@ollimart.in>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
