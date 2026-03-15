@@ -458,7 +458,7 @@ class Otlp extends utils.Adapter {
                 );
                 return false;
             } finally {
-                release?.call(release);
+                release?.();
             }
         });
 
@@ -470,6 +470,7 @@ class Otlp extends utils.Adapter {
         this.log.debug(
             `Timer: Updated values for ${successfulUpdates}/${numDataPoints} tracked data points in ${duration}ms.`,
         );
+        await this.setTimerRuntimeAsync(duration);
     }
 
     createEndpointAndExporter(): { endpoint: string | null; exporter: PushMetricExporter | null } {
@@ -542,6 +543,30 @@ class Otlp extends utils.Adapter {
                     ? this.log.error(`Can not update this._connected state: ${error}`)
                     : this.log.debug(`connected set to ${this._connected}`),
             );
+        }
+    }
+
+    private async setTimerRuntimeAsync(runtimeInMs: number): Promise<void> {
+        const targetState = 'info.refreshTimerRuntime';
+        try {
+            // v Benötigt oder nicht?
+            await this.extendObject(targetState, {
+                type: 'state',
+                common: {
+                    name: 'Execution duration of the latest refresh cycle in milliseconds',
+                    type: 'number',
+                    read: true,
+                    write: false,
+                    def: 0,
+                },
+            });
+
+            await this.setState(targetState, {
+                val: runtimeInMs,
+                ack: true,
+            });
+        } catch (e) {
+            this.log.error(`Could not set ${targetState} state: ${e instanceof Error ? e.message : JSON.stringify(e)}`);
         }
     }
 }

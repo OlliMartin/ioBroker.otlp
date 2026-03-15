@@ -255,7 +255,7 @@ class Otlp extends utils.Adapter {
     if (!customConfig.enabled) {
       return;
     }
-    await this.writeInitialValueAsync(id);
+    await this.retrieveAndRecordValueAsync(id);
   }
   addTrackedDataPoint(id, customConfig) {
     if (!this._trackedDataPoints[id] && !this._subscribeAll) {
@@ -289,7 +289,7 @@ class Otlp extends utils.Adapter {
       this.unsubscribeForeignStates(id);
     }
   }
-  async writeInitialValueAsync(id) {
+  async retrieveAndRecordValueAsync(id) {
     const state = await this.getForeignStateAsync(id);
     if (!state || !this._trackedDataPoints[id]) {
       return;
@@ -320,7 +320,7 @@ class Otlp extends utils.Adapter {
       let release = null;
       try {
         release = await semaphore.acquire();
-        await this.writeInitialValueAsync(dPointId);
+        await this.retrieveAndRecordValueAsync(dPointId);
         return true;
       } catch (e) {
         this.log.error(
@@ -328,7 +328,7 @@ class Otlp extends utils.Adapter {
         );
         return false;
       } finally {
-        release == null ? void 0 : release.call(release);
+        release == null ? void 0 : release();
       }
     });
     const allResults = await Promise.all(allPromises);
@@ -337,6 +337,7 @@ class Otlp extends utils.Adapter {
     this.log.debug(
       `Timer: Updated values for ${successfulUpdates}/${numDataPoints} tracked data points in ${duration}ms.`
     );
+    await this.setTimerRuntimeAsync(duration);
   }
   createEndpointAndExporter() {
     let otlpEndpoint = null;
@@ -396,6 +397,27 @@ class Otlp extends utils.Adapter {
           error ? this.log.error(`Can not update this._connected state: ${error}`) : this.log.debug(`connected set to ${this._connected}`)
         )
       );
+    }
+  }
+  async setTimerRuntimeAsync(runtimeInMs) {
+    const targetState = "info.refreshTimerRuntime";
+    try {
+      await this.extendObject(targetState, {
+        type: "state",
+        common: {
+          name: "Execution duration of the latest refresh cycle in milliseconds",
+          type: "number",
+          read: true,
+          write: false,
+          def: 0
+        }
+      });
+      await this.setState(targetState, {
+        val: runtimeInMs,
+        ack: true
+      });
+    } catch (e) {
+      this.log.error(`Could not set ${targetState} state: ${e instanceof Error ? e.message : JSON.stringify(e)}`);
     }
   }
 }
