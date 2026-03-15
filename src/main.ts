@@ -552,22 +552,6 @@ class Otlp extends utils.Adapter {
         const targetState = 'info.refreshTimerRuntime';
 
         try {
-            if (!this.infoRefreshTimerRuntimeStateExists) {
-                await this.extendObject(targetState, {
-                    type: 'state',
-                    common: {
-                        name: 'Execution duration of the latest refresh cycle in milliseconds',
-                        role: 'time.span',
-                        type: 'number',
-                        read: true,
-                        write: false,
-                        def: 0,
-                    },
-                });
-
-                this.infoRefreshTimerRuntimeStateExists = true;
-            }
-
             await this.setState(targetState, {
                 val: runtimeInMs,
                 ack: true,
