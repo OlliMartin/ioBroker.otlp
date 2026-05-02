@@ -77,6 +77,7 @@ Refer to the showcases below for practical examples:
 -->
 
 ### **WORK IN PROGRESS**
+- (copilot) Adapter requires node.js >= 22 now
 
 * (OlliMartin) Remove `info.refreshTimerRuntime` state creation through code
 
