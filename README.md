@@ -132,6 +132,8 @@ Refer to the showcases below for practical examples:
   * Basic OTLP exporter functionality (periodic exporting)
   * gRPC or HTTP otlp transport
 
+[Older changelogs can be found there](CHANGELOG_OLD.md)
+
 ## License
 MIT License
 
